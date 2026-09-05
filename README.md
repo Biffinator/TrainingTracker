@@ -1,3 +1,3 @@
-# Hybrid Training Tracker V3.7.0
+# Hybrid Training Tracker V3.8.0
 
-Cold plunge countdown followed by overtime count-up. Stop saves total elapsed duration, decimal temperature and time, and checks the plunge complete. Timer draft is local to each device/account and persists across refreshes; completed sessions use existing cloud sync. Timer catches up using timestamps after backgrounding. Session feed, period summary and activity chart use existing manual and timed entries. No Shiver data is imported.
+Day, Calendar and Plunges tabs. Month calendar shows planned activity icons, colors completed activities, and shows a green check when all required activities are complete. Optional activities have dashed outlines and do not block the check. Calendar dates open their daily checklist. Existing data and cloud sync preserved.
