@@ -1,5 +1,7 @@
-# Hybrid Training Tracker V3.4
+# Hybrid Training Tracker V3.5
 
-Add a workout on a selected date. Choose workout type, time, equipment and recovery; generate and edit a preview; add an optional session or replace an existing one. Suggestions use simple local rules based on scheduled sessions, recent logged activity and recovery choices. They do not measure fatigue or infer unlogged exercise. Previous matching sets appear in the preview. Low recovery suggests easy recovery work.
+Adds goals/availability, date-based sleep/energy/stress/soreness check-ins, actual session minutes and effort, and a weekly workload summary. Inputs save locally and use the existing cloud sync. Summary buttons refresh calculated displays. Suggestions prefill recovery and equipment from saved entries. Preferences do not automatically reschedule workouts.
 
-Optional extras do not affect the required completion check. Replacements preserve archived logs and the original required/optional setting. Existing local and cloud persistence remain compatible; no Supabase migration required. 26 automated checks pass.
+Weekly effort units are minutes multiplied by session RPE, a rough trend rather than a physiological recovery or injury score. Missing data remain unknown. Recorded sets use approximate primary muscle categories; use consistent names and units. Archived session metrics survive workout replacement.
+
+29 automated checks pass. Existing Supabase setup remains compatible. No new SQL required. Garmin/Apple Health are not connected; official Garmin API approval or an iPhone HealthKit bridge would be separate integration work.
