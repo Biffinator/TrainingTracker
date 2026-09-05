@@ -1,7 +1,3 @@
-# Hybrid Training Tracker V3.5
+# Hybrid Training Tracker V3.6.0
 
-Adds goals/availability, date-based sleep/energy/stress/soreness check-ins, actual session minutes and effort, and a weekly workload summary. Inputs save locally and use the existing cloud sync. Summary buttons refresh calculated displays. Suggestions prefill recovery and equipment from saved entries. Preferences do not automatically reschedule workouts.
-
-Weekly effort units are minutes multiplied by session RPE, a rough trend rather than a physiological recovery or injury score. Missing data remain unknown. Recorded sets use approximate primary muscle categories; use consistent names and units. Archived session metrics survive workout replacement.
-
-29 automated checks pass. Existing Supabase setup remains compatible. No new SQL required. Garmin/Apple Health are not connected; official Garmin API approval or an iPhone HealthKit bridge would be separate integration work.
+Simple daily workout checkboxes and multiple cold-plunge sessions with minutes, seconds, temperature, unit and optional time of day. Existing detailed lifting and wellness history stays in backups but is no longer displayed. Existing local storage and private cloud sync are preserved. No Shiver connection is enabled.
