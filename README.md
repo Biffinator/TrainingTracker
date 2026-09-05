@@ -1,3 +1,3 @@
-# Hybrid Training Tracker V3.8.0
+# Hybrid Training Tracker V3.9.0
 
-Day, Calendar and Plunges tabs. Month calendar shows planned activity icons, colors completed activities, and shows a green check when all required activities are complete. Optional activities have dashed outlines and do not block the check. Calendar dates open their daily checklist. Existing data and cloud sync preserved.
+Delete individual plunge sessions from Day or Plunges. Remove activities from a single date. Confirmation precedes removal; calendar and analytics refresh. Last plunge deletion clears its activity check. Removed entries are retained in exported backups under deletedEntries. Existing cloud sync propagates changes.
