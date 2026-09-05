@@ -1,14 +1,16 @@
+import {createIdleSync} from './idle-sync.js';
 import {createSessionStore,SESSION_KEY} from './session.js';
 import {request,decision,changed} from './cloud-api.js';
 import {validateBackup} from './core.js';
 export function connectCloud(hooks){
  const $=id=>document.getElementById(id);let session=null,meta=null,busy=false,epoch=0,conflict=null,timer;
+ const idle=createIdleSync(()=>sync());
  const sessionStore=createSessionStore(localStorage,sessionStorage);let remember=true;
  const state=s=>$('cloud-status').textContent=s;
  const metaKey=()=>`hybridCloudMeta:${session.user.id}`;
  const persist=()=>localStorage.setItem(metaKey(),JSON.stringify(meta));
  const clone=x=>JSON.parse(JSON.stringify(x));
- function ui(){ $('cloud-login').hidden=!!session;$('cloud-controls').hidden=!session;$('cloud-account').textContent=session?.user.email||'';}
+ function ui(){ $('cloud-sync').hidden=!session;$('cloud-options').hidden=!session; $('cloud-login').hidden=!!session;$('cloud-controls').hidden=!session;$('cloud-account').textContent=session?.user.email||'';}
  async function token(){
   if(!session)throw Error('Sign in to sync.');
   const renew=async()=>{const run=epoch,uid=session?.user.id;if(!uid)throw Error('Signed out.');const stored=sessionStore.read();if(stored?.session.user.id===uid){session=stored.session;remember=stored.remember;}
@@ -18,21 +20,23 @@ export function connectCloud(hooks){
   return navigator.locks? navigator.locks.request('hybrid-session-refresh',renew):renew();
  }
  async function remote(){const rows=await request('/rest/v1/tracker_state?select=payload,revision,updated_at',{token:await token()});if(!Array.isArray(rows)||rows.length>1)throw Error('Unexpected cloud response.');if(rows[0])validateBackup(rows[0].payload);return rows[0]||null;}
- function queue(){clearTimeout(timer);if(session){state(navigator.onLine?'Saved locally · waiting to sync':'Offline · saved locally');timer=setTimeout(sync,1600);}}
+ function queue(){clearTimeout(timer);if(session){state(navigator.onLine?'Saved locally · waiting to sync':'Offline · saved locally');idle.touch();}}
  function dirty(){if(!session)return;try{meta.dirty=true;persist();queue();}catch(e){state('Local sync information could not be saved. Export a backup.');}}
- async function sync(){
+ async function sync(force=false){
   if(!session||busy||conflict||!hooks.available())return;
   if(!navigator.onLine){state('Offline · saved locally. Reconnect to sync.');return;}
-  if(document.querySelector('dialog[open]')||document.activeElement?.matches('input,textarea,select')){clearTimeout(timer);timer=setTimeout(sync,2000);return;}
+  if(document.querySelector('dialog[open]'))return;
+  if(!force&&idle.remaining()>0){idle.schedule();return;}
+  const editStamp=idle.stamp();
   busy=true;const run=epoch;state('Syncing…');
   try{
-   const cloud=await remote();if(run!==epoch)return;
+   const cloud=await remote();if(run!==epoch)return;if(idle.stamp()!==editStamp){idle.schedule();return;}
    const local=clone(hooks.get()),action=decision(local,cloud,meta.revision,meta.dirty);
    if(action==='conflict'){conflict=cloud||{revision:0,payload:null};$('cloud-conflict').hidden=false;state('Both copies changed. Choose which history to use below.');return;}
    if(action==='pull'){hooks.apply(cloud.payload);meta={revision:cloud.revision,dirty:false};persist();}
    else if(action==='equal'){meta={revision:cloud.revision,dirty:false};persist();}
    else {
-    const result=await request('/rest/v1/rpc/save_tracker',{token:await token(),method:'POST',body:{p_payload:local,p_revision:meta.revision}});if(run!==epoch)return;
+    const access=await token();if(idle.stamp()!==editStamp){idle.schedule();return;}const result=await request('/rest/v1/rpc/save_tracker',{token:access,method:'POST',body:{p_payload:local,p_revision:meta.revision}});if(run!==epoch)return;
     meta={revision:result.revision,dirty:changed(local,hooks.get())};persist();
    }
    if(meta.dirty)queue();else state('Saved to cloud · '+new Date().toLocaleTimeString());
@@ -46,14 +50,16 @@ export function connectCloud(hooks){
   if(!Number.isSafeInteger(meta.revision)||meta.revision<0)throw Error('Invalid local sync information.');
   hooks.account(session.user.id);remember=$('cloud-remember').checked;sessionStore.write(session,remember);ui();state('Signed in. Loading your history…');
  }catch(e){session=null;state('Sign-in failed: '+e.message);}finally{$('cloud-password').value='';busy=false;$('cloud-signin').disabled=false;}if(session)sync();};
- $('cloud-sync').onclick=sync;
- $('cloud-disconnect').onclick=()=>{if(busy){state('Wait for the current sync to finish.');return;}epoch++;clearTimeout(timer);const old=session;sessionStore.clear();session=null;conflict=null;meta=null;$('cloud-conflict').hidden=true;hooks.account(null);ui();state('Disconnected. Cloud-account history remains stored locally on this device.');if(old)request('/auth/v1/logout?scope=local',{method:'POST',token:old.access_token}).catch(()=>{});};
+ $('cloud-sync').onclick=()=>sync(true);
+ $('cloud-disconnect').onclick=()=>{if(busy){state('Wait for the current sync to finish.');return;}epoch++;clearTimeout(timer);idle.cancel();const old=session;sessionStore.clear();session=null;conflict=null;meta=null;$('cloud-conflict').hidden=true;hooks.account(null);ui();state('Disconnected. Cloud-account history remains stored locally on this device.');if(old)request('/auth/v1/logout?scope=local',{method:'POST',token:old.access_token}).catch(()=>{});};
  $('cloud-import').onclick=()=>{if(busy||conflict)return;const old=hooks.legacy();if(!old){state('No earlier V2 history found on this browser.');return;}if(!confirm('Copy this browser’s earlier V2 history into your signed-in account? Current account history will download as a backup before replacement.'))return;hooks.download(hooks.get(),'before-local-import.json');hooks.apply(validateBackup(old));dirty();};
  $('cloud-copies').onclick=()=>{hooks.download({local:hooks.get(),cloud:conflict?.payload},'tracker-conflict-copies.json');};
  $('cloud-use-remote').onclick=()=>{if(!conflict||busy)return;if(!conflict.payload){state('The cloud copy was removed. Export both copies or choose Keep this device.');return;}if(!confirm('Use the cloud history? Both current copies will download first.'))return;hooks.download({local:hooks.get(),cloud:conflict.payload},'tracker-before-conflict-resolution.json');hooks.apply(conflict.payload);meta={revision:conflict.revision,dirty:false};persist();conflict=null;$('cloud-conflict').hidden=true;state('Cloud history loaded.');};
  $('cloud-use-local').onclick=()=>{if(!conflict||busy)return;if(!confirm('Replace the cloud history with this device’s history? Both copies will download first.'))return;hooks.download({local:hooks.get(),cloud:conflict.payload},'tracker-before-conflict-resolution.json');meta={revision:conflict.revision,dirty:true};persist();conflict=null;$('cloud-conflict').hidden=true;sync();};
- window.addEventListener('online',sync);window.addEventListener('focus',sync);setInterval(()=>{if(!document.hidden)sync();},30000);
- window.addEventListener('storage',e=>{if(e.key===SESSION_KEY&&!e.newValue&&session){epoch++;session=null;clearTimeout(timer);ui();state('Signed out in another tab. Local history is preserved.');}});
+ window.addEventListener('online',()=>sync());window.addEventListener('focus',()=>sync());
+ document.addEventListener('input',e=>{if(session&&e.target.matches('#tasks input,#notes,#start,#edit-form input,#edit-form textarea,#edit-form select'))idle.touch();});
+ document.addEventListener('keydown',e=>{if(session&&e.target.matches('#tasks input,#notes,#start,#edit-form input,#edit-form textarea'))idle.touch();});setInterval(()=>{if(!document.hidden)sync();},30000);
+ window.addEventListener('storage',e=>{if(e.key===SESSION_KEY&&!e.newValue&&session){epoch++;session=null;clearTimeout(timer);idle.cancel();ui();state('Signed out in another tab. Local history is preserved.');}});
  ui();state('Local mode · sign in to share history across devices.');
  try{const saved=sessionStore.read();if(saved){session=saved.session;remember=saved.remember;const cached=localStorage.getItem(metaKey());meta=cached?JSON.parse(cached):{revision:0,dirty:false};if(!Number.isSafeInteger(meta.revision)||meta.revision<0)throw Error('Invalid sync information');hooks.account(session.user.id);ui();state('Restoring your cloud session…');setTimeout(sync,0);}}catch(e){session=null;sessionStore.clear();ui();state('Please sign in again. Your local history is preserved.');}
  return {dirty};
