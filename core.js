@@ -1,0 +1,14 @@
+import {base} from './program.js';
+export const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+export function validDate(s){return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)) && new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;}
+export const stamp=s=>Date.parse(s+'T00:00:00Z');
+export const addDays=(s,n)=>new Date(stamp(s)+n*86400000).toISOString().slice(0,10);
+export function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+export const weekday=s=>(new Date(stamp(s)).getUTCDay()+6)%7;
+export function cycle(date,start){let offset=Math.floor((stamp(date)-stamp(start))/86400000);return offset<0?null:{week:Math.floor(offset/7)%4+1,number:Math.floor(offset/28)+1,day:DAYS[weekday(date)]};}
+export function plan(date,start){const c=cycle(date,start);return c?base(c.day,c.week).map((t,i)=>({...t,id:String(i),optional:t.n.includes('optional'),lift:t.n.startsWith('Lift ')})):[];}
+export function status(record,tasks,date,now=today()) {if(date>now || !record || !tasks.length)return 'empty';if(record.missed)return 'missed';const required=tasks.filter(t=>!t.optional);if(required.every(t=>record.done?.[t.id]))return 'complete';return tasks.some(t=>record.done?.[t.id])?'partial':'empty';}
+export function setCount(ex,week){let n=Number(ex.match(/— (\d)/)?.[1]||3);return week===4?Math.max(1,Math.round(n*.7)):n;}
+export function previous(db,date,lift,exercise){for(const d of Object.keys(db.days).filter(d=>d<date&&weekday(d)===weekday(date)).sort().reverse()){const sets=db.days[d].sets?.[lift]?.[exercise];if(sets?.some(s=>s.weight!==''||s.reps!==''))return {date:d,sets};const old=db.days[d].legacyDetails?.[`${lift}-${exercise}`];if(old&&(old.weight||old.reps))return {date:d,sets:[{weight:old.weight||'',reps:old.reps||''}],legacy:true};}return null;}
+export function migrate(v1,start){const days={};for(let w=1;w<=4;w++)DAYS.forEach((day,i)=>{const r=v1[`${w}-${day}`];if(!r)return;const date=addDays(start,(w-1)*7+i);days[date]={done:{...r.done},notes:r.notes||'',missed:!!r.missed,sets:{},legacyDetails:r.details||{},legacy:true};});return days;}
+export function validateBackup(x){if(!x||x.version!==2||!validDate(x.start)||weekday(x.start)!==0||!x.days||typeof x.days!=='object'||Array.isArray(x.days))throw Error('Choose a valid V2 backup.');for(const [date,r] of Object.entries(x.days)){if(!validDate(date)||!r||typeof r!=='object'||typeof r.notes!=='string'||!r.done||typeof r.done!=='object')throw Error('Invalid day record.');if(r.sets)for(const exercises of Object.values(r.sets)){if(!exercises||typeof exercises!=='object')throw Error('Invalid lift.');for(const sets of Object.values(exercises)){if(!Array.isArray(sets)||sets.length>30||sets.some(s=>!s||!['string','number'].includes(typeof s.weight)||!['string','number'].includes(typeof s.reps)))throw Error('Invalid sets.');}}}return x;}
