@@ -1,3 +1,4 @@
+import {mountSuggestions} from './suggestions-ui.js';
 import {target,history,chart} from './training.js';
 import {connectCloud} from './cloud.js';
 import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask} from './core.js';
@@ -9,7 +10,7 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.3.1 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.4.0 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && !!cycle(selected,db.start);}
 function calendar(){ $('month').textContent=format(month,{month:'long',year:'numeric'});const begin=addDays(month,-weekday(month));const next=new Date(month+'T12:00:00');next.setMonth(next.getMonth()+1);const count=Math.ceil((weekday(month)+new Date(next.getFullYear(),next.getMonth(),0).getDate())/7)*7;let html='';for(let i=0;i<count;i++){const d=addDays(begin,i),s=status(db.days[d],plan(d,db.start,db.days),d),symbol={complete:'✓',partial:'◐',missed:'✕',empty:''}[s];html+=`<button class="day ${d.slice(0,7)!==month.slice(0,7)?'outside':''} ${d===selected?'selected':''} ${d===today()?'today':''}" data-date="${d}" aria-pressed="${d===selected}" aria-label="${esc(format(d,{dateStyle:'full'}))}: ${s==='empty'?'not logged':s}"><span>${Number(d.slice(8))}</span><span class="symbol ${s}" aria-hidden="true">${symbol}</span></button>`;}$('calendar').innerHTML=html;$('calendar').querySelectorAll('button').forEach(b=>b.onclick=()=>{selected=b.dataset.date;render();});}
@@ -43,5 +44,9 @@ $('start-tomorrow').onclick=()=>{if(blocked)return;$('start').value=addDays(toda
 
 function swapExercise(id,index){if(blocked)return;const tasks=plan(selected,db.start,db.days),t=tasks.find(t=>t.id===id),old=t.ex[index];const name=prompt('Exercise name for this date (e.g. Barbell curl, DB curl, Hammer curl). Different names keep separate histories.',old.split('—')[0].trim());if(name===null||!name.trim())return;if(name.length>200||name.includes('—')){message('Use an exercise name under 200 characters without an em dash.');return;}const next=structuredClone(t);next.ex[index]=name.trim()+(old.includes('—')?' —'+old.split('—').slice(1).join('—'):'');try{const r=structuredClone(rec());replaceTask(r,tasks,id,next);db.days[selected]=r;save();render();}catch(e){message(e.message);}}
 
+
+
+
+mountSuggestions({db:()=>db,date:()=>selected,blocked:()=>blocked,commit:(date,record)=>{db.days[date]=record;save();render();}});
 
 

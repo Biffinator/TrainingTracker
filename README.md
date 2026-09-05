@@ -1,7 +1,5 @@
-# Hybrid Training Tracker V3.3.0
+# Hybrid Training Tracker V3.4
 
-Adds next-workout guidance based on previous sets and reps in reserve, per-exercise weight charts with set history, a rest timer, and date-specific exercise swaps. Swap retains the set prescription; use Edit this workout to change it. Different exercise names have separate histories. Archived sets are preserved. Use consistent units and equipment for meaningful charts. Targets are suggestions, not automatic weight changes.
+Add a workout on a selected date. Choose workout type, time, equipment and recovery; generate and edit a preview; add an optional session or replace an existing one. Suggestions use simple local rules based on scheduled sessions, recent logged activity and recovery choices. They do not measure fatigue or infer unlogged exercise. Previous matching sets appear in the preview. Low recovery suggests easy recovery work.
 
-Changes and effort ratings save locally and sync after 30 idle seconds. Existing Supabase setup is compatible. No SQL migration required. Rest timer is local to the open page and resets on reload. Export backup remains available.
-
-23 automated checks pass.
+Optional extras do not affect the required completion check. Replacements preserve archived logs and the original required/optional setting. Existing local and cloud persistence remain compatible; no Supabase migration required. 26 automated checks pass.
