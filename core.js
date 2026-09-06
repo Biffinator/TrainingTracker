@@ -1,4 +1,4 @@
-import {base} from './program.js?v=3.17.2';
+import {base} from './program.js?v=3.18.0';
 export const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 export function validDate(s){return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)) && new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;}
 export const stamp=s=>Date.parse(s+'T00:00:00Z');
