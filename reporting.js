@@ -1,5 +1,5 @@
-import {addDays} from './core.js?v=3.16.4';
-import {daySummary} from './wellness.js?v=3.16.4';
+import {addDays} from './core.js?v=3.16.5';
+import {daySummary} from './wellness.js?v=3.16.5';
 export const PERIODS=[['week','This week'],['month','This month'],['3m','Last 3 months'],['6m','Last 6 months'],['year','Last 12 months'],['ytd','Year to date']];
 export function periodRange(period,date){
  if(period==='week'){const dt=new Date(date+'T12:00:00');const back=(dt.getDay()+6)%7;return {start:addDays(date,-back),end:date};}

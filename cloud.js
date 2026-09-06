@@ -1,7 +1,7 @@
-import {createIdleSync} from './idle-sync.js?v=3.16.4';
-import {createSessionStore,SESSION_KEY} from './session.js?v=3.16.4';
-import {request,decision,changed} from './cloud-api.js?v=3.16.4';
-import {validateBackup} from './core.js?v=3.16.4';
+import {createIdleSync} from './idle-sync.js?v=3.16.5';
+import {createSessionStore,SESSION_KEY} from './session.js?v=3.16.5';
+import {request,decision,changed} from './cloud-api.js?v=3.16.5';
+import {validateBackup} from './core.js?v=3.16.5';
 export function connectCloud(hooks){
  const $=id=>document.getElementById(id);let session=null,meta=null,busy=false,epoch=0,conflict=null,timer;
  const idle=createIdleSync(()=>sync());

@@ -1,12 +1,11 @@
-import {deletePlunge,removeActivity} from './deletion.js?v=3.16.4';
-import {mountPlunge} from './plunge-ui.js?v=3.16.4';
+import {deletePlunge,removeActivity} from './deletion.js?v=3.16.5';
+import {mountPlunge} from './plunge-ui.js?v=3.16.5';
 let refreshPlunge=()=>{},refreshReport=()=>{};
-import {connectCloud} from './cloud.js?v=3.16.4';
-import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay,weekSaturday} from './core.js?v=3.16.4';
-import {renderWellness} from './wellness-ui.js?v=3.16.4';
-import {isExercise} from './wellness.js?v=3.16.4';
-import {mountReporting} from './reporting-ui.js?v=3.16.4';
-import {mountSuggestions} from './suggestions-ui.js?v=3.16.4';
+import {connectCloud} from './cloud.js?v=3.16.5';
+import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay,weekSaturday} from './core.js?v=3.16.5';
+import {isExercise} from './wellness.js?v=3.16.5';
+import {mountReporting} from './reporting-ui.js?v=3.16.5';
+import {mountSuggestions} from './suggestions-ui.js?v=3.16.5';
 const $=id=>document.getElementById(id); let activeId=localStorage.getItem('hybridActiveAccount')||null; let KEY=activeId?'hybridAccount:'+activeId:'hybridTrackerV2'; let cloud=null;
 const message=s=>$('message').textContent=s;
 let db,legacy=null,blocked=false;
@@ -15,7 +14,7 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.16.4 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.16.5 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && (!!cycle(selected,db.start)||!!db.days[selected]?.tasks?.length);}
 const activityKinds=[
@@ -37,7 +36,7 @@ function calendar(){
  }
  $('calendar').innerHTML=html;$('calendar').querySelectorAll('button').forEach(b=>b.onclick=()=>{selected=b.dataset.date;render();showView('day');$('date').focus();});
 }
-function showView(view){document.querySelector('.calendar-panel').hidden=view!=='calendar';document.querySelector('.detail').hidden=view!=='day';document.querySelector('.layout').hidden=!(view==='day'||view==='calendar');const wellness=$('wellness');if(wellness)wellness.hidden=view!=='day';const report=$('report-panel');if(report)report.hidden=view!=='report';if(view==='report')refreshReport();const utilities=document.querySelector('.utilities');if(utilities)utilities.hidden=view!=='utilities';document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));}
+function showView(view){document.querySelector('.calendar-panel').hidden=view!=='calendar';document.querySelector('.detail').hidden=view!=='day';document.querySelector('.layout').hidden=!(view==='day'||view==='calendar');const report=$('report-panel');if(report)report.hidden=view!=='report';if(view==='report')refreshReport();const utilities=document.querySelector('.utilities');if(utilities)utilities.hidden=view!=='utilities';document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));}
 function label(t){if(/^Cold plunge/i.test(t.n))return 'Cold plunge';if(/^Lift [ABC]/.test(t.n))return 'Full-body lifting'+(cycle(selected,db.start)?.week===4?' · Deload':'');return t.n.split(' — ')[0];}
 function render(){
  calendar();$('start').value=db.start;$('long-day').value=db.longDay||'Sat';
@@ -56,7 +55,7 @@ function render(){
  $('tasks').querySelectorAll('[data-add-session]').forEach(b=>b.onclick=()=>{if(!editable())return;const r=rec();r.plunges||={};r.plunges[b.dataset.addSession]||=[{}];r.plunges[b.dataset.addSession].push({});save();render();});
  $('tasks').querySelectorAll('[data-remove-plunge]').forEach(b=>b.onclick=()=>{if(!editable()||!confirm('Delete this cold-plunge session? If this is the last session, its completion check will clear.'))return;if(deletePlunge(rec(),b.dataset.removePlunge,Number(b.dataset.index))){save();render();}});
  $('tasks').querySelectorAll('[data-remove-activity]').forEach(b=>b.onclick=()=>{if(blocked||!confirm('Remove this activity and its recorded sessions from this date? The recurring program on other dates will stay unchanged.'))return;removeActivity(rec(),plan(selected,db.start,db.days,resolveLongDay(db,selected)),b.dataset.removeActivity);save();render();});
- migration();refreshPlunge();renderWellness({db:()=>db,date:()=>selected,blocked:()=>blocked,save,refresh:render});
+ migration();refreshPlunge();
 }
 function plungeFields(t,r,disabled){const sessions=r.plunges?.[t.id]||[];return sessions.map((s,i)=>`<fieldset class="plunge-session"><legend>Session ${i+1}</legend><div class="plunge-grid">${[['minutes','Minutes','number','min="0" max="1440" step="1"'],['seconds','Seconds','number','min="0" max="59" step="1"'],['temperature','Temperature (°F)','number','step="any"'],['time','Time of day (optional)','time','']].map(([key,name,type,attrs])=>`<label>${name}<input type="${type}" ${attrs} data-plunge="${esc(t.id)}" data-session="${i}" data-field="${key}" value="${esc(key==='temperature'&&s.unit==='C'&&s[key]!==''&&s[key]!=null?+(Number(s[key])*9/5+32).toFixed(2):s[key]??'')}" ${disabled}></label>`).join('')}</div><button data-remove-plunge="${esc(t.id)}" data-index="${i}" ${disabled}>Delete session</button></fieldset>`).join('')+`<button data-add-session="${esc(t.id)}" ${disabled}>Add another session</button><p class="muted">Saved automatically. Check Cold plunge when complete.</p>`;}
 function migration(){const el=$('migration');el.hidden=!legacy||db.migrationResolved||blocked;if(el.hidden)return;el.innerHTML='<h2>Your V1 history is preserved</h2><p>V1 saved week/day labels without dates. You can assign those entries to the first four weeks beginning '+esc(db.start)+'. Single weight/reps entries stay labeled as V1 values, because their individual sets are unknown.</p><div class="actions"><button id="migrate">Place V1 logs in first cycle</button><button id="keep">Keep V1 as backup only</button></div>';$('migrate').onclick=()=>{if(!confirm('Assign V1 entries to the first cycle starting '+db.start+'? Existing V2 dates will take priority.'))return;db.days={...migrate(legacy,db.start),...db.days};db.legacySource=legacy;db.migrationResolved=true;save();render();};$('keep').onclick=()=>{db.legacySource=legacy;db.migrationResolved=true;save();render();};}
