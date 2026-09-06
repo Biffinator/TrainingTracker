@@ -1,6 +1,6 @@
-import {plan,resolveLongDay} from './core.js';
-import {deletePlunge} from './deletion.js';
-import {clockState,duration,sessions,statistics} from './plunge.js';
+import {plan,resolveLongDay} from './core.js?v=3.15.1';
+import {deletePlunge} from './deletion.js?v=3.15.1';
+import {clockState,duration,sessions,statistics} from './plunge.js?v=3.15.1';
 export function mountPlunge(h){
  const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const key=()=> 'hybridPlungeTimer:'+h.account();let run=null,wake=null,countdownEnd=null,pendingSetup=null,goalToneDone=false,audioCtx=null;
