@@ -1,5 +1,5 @@
 import {deletePlunge,removeActivity} from './deletion.js';
-import {mountPlunge} from './plunge-ui.js?v=3.13.0';
+import {mountPlunge} from './plunge-ui.js?v=3.14.0';
 let refreshPlunge=()=>{};
 import {connectCloud} from './cloud.js';
 import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask} from './core.js';
@@ -11,7 +11,7 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.13.0 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.14.0 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && (!!cycle(selected,db.start)||!!db.days[selected]?.tasks?.length);}
 const activityKinds=[
@@ -43,7 +43,7 @@ function render(){
  $('date').textContent=format(selected,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
  $('progress').textContent=!c?'Your program begins '+db.start:selected>today()?'Upcoming workout · logging opens on this date.':r.missed?'Marked missed.':`${tasks.filter(t=>!t.optional&&r.done?.[t.id]).length} / ${tasks.filter(t=>!t.optional).length} required workouts completed`;
  $('logging').hidden=!c&&!tasks.length;$('add-workout').disabled=blocked||!c;
- $('tasks').innerHTML=tasks.map(t=>`<div class="task"><div class="workout-row"><label class="task-label"><input type="checkbox" data-task="${esc(t.id)}" ${r.done?.[t.id]?'checked':''} ${disabled}><span>${esc(label(t))}${t.optional?' <small>Optional</small>':''}</span></label><button data-edit="${esc(t.id)}" ${blocked?'disabled':''}>Edit</button><button data-remove-activity="${esc(t.id)}" ${blocked?'disabled':''}>Remove</button></div>${/^Cold plunge/i.test(t.n)?plungeFields(t,r,disabled):''}</div>`).join('');
+ $('tasks').innerHTML=tasks.map(t=>{const detail=t.n.includes(' — ')?t.n.slice(t.n.indexOf(' — ')+3):'';const steps=(!t.lift&&t.ex&&t.ex.length)?`<ul class="instructions">${t.ex.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'';return `<div class="task"><div class="workout-row"><label class="task-label"><input type="checkbox" data-task="${esc(t.id)}" ${r.done?.[t.id]?'checked':''} ${disabled}><span>${esc(label(t))}${t.optional?' <small>Optional</small>':''}</span></label><button data-edit="${esc(t.id)}" ${blocked?'disabled':''}>Edit</button><button data-remove-activity="${esc(t.id)}" ${blocked?'disabled':''}>Remove</button></div>${detail?`<p class="muted task-detail">${esc(detail)}</p>`:''}${steps}${/^Cold plunge/i.test(t.n)?plungeFields(t,r,disabled):''}</div>`;}).join('');
  $('notes').value=r.notes||'';$('notes').disabled=!editable();['all','miss','clear'].forEach(id=>$(id).disabled=!editable());
  $('tasks').querySelectorAll('[data-task]').forEach(el=>el.onchange=()=>{if(!editable())return;rec().done[el.dataset.task]=el.checked;rec().missed=false;save();render();});
  $('tasks').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(b.dataset.edit));

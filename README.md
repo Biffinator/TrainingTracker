@@ -1,3 +1,3 @@
-# Hybrid Training Tracker V3.13.0
+# Hybrid Training Tracker V3.14.0
 
-The "norm" easy Tuesday run and Thursday bike are now 35-40 min and 60 min (long-day and hard-session durations are unchanged). Added a Long workout day setting (Saturday or Sunday, next to Training starts) - whichever day you don't pick becomes the optional recovery/basketball day, with the treadmill and long-workout content following the role rather than the literal calendar day.
+The day view now shows what's actually prescribed for each task instead of just the short category name: a muted subtitle with the full duration/detail (e.g. "60 min Zone 2"), and for structured sessions like Tempo bike or Norwegian 4x4 run, the warm-up/interval/cooldown steps as a reference checklist. Nothing about the underlying data changed - this was previously stored correctly but hidden by the day view's label truncation.
