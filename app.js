@@ -1,8 +1,8 @@
-import {deletePlunge,removeActivity} from './deletion.js?v=3.15.5';
-import {mountPlunge} from './plunge-ui.js?v=3.15.5';
+import {deletePlunge,removeActivity} from './deletion.js?v=3.15.6';
+import {mountPlunge} from './plunge-ui.js?v=3.15.6';
 let refreshPlunge=()=>{};
-import {connectCloud} from './cloud.js?v=3.15.5';
-import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay,weekSaturday} from './core.js?v=3.15.5';
+import {connectCloud} from './cloud.js?v=3.15.6';
+import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay,weekSaturday} from './core.js?v=3.15.6';
 const $=id=>document.getElementById(id); let activeId=localStorage.getItem('hybridActiveAccount')||null; let KEY=activeId?'hybridAccount:'+activeId:'hybridTrackerV2'; let cloud=null;
 const message=s=>$('message').textContent=s;
 let db,legacy=null,blocked=false;
@@ -11,7 +11,7 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.15.5 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.15.6 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && (!!cycle(selected,db.start)||!!db.days[selected]?.tasks?.length);}
 const activityKinds=[
@@ -72,7 +72,7 @@ render();
 cloud=connectCloud({
  get:()=>db, available:()=>!blocked,
  apply:value=>{const next=validateBackup(JSON.parse(JSON.stringify(value)));localStorage.setItem(KEY,JSON.stringify(next));db=next;render();},
- account:id=>{const nextKey=id?'hybridAccount:'+id:'hybridTrackerV2';const raw=localStorage.getItem(nextKey);const next=raw?validateBackup(JSON.parse(raw)):{version:2,start:db.start,days:{},migrationResolved:true};KEY=nextKey;activeId=id;if(id)localStorage.setItem('hybridActiveAccount',id);else localStorage.removeItem('hybridActiveAccount');db=next;blocked=false;render();},
+ account:id=>{const nextKey=id?'hybridAccount:'+id:'hybridTrackerV2';const raw=localStorage.getItem(nextKey);let next;try{next=raw?validateBackup(JSON.parse(raw)):{version:2,start:db.start,days:{},migrationResolved:true};}catch(e){next={version:2,start:db.start,days:{},migrationResolved:true};if(id)try{const metaKey='hybridCloudMeta:'+id;const m=JSON.parse(localStorage.getItem(metaKey)||'{"revision":0}');localStorage.setItem(metaKey,JSON.stringify({...m,dirty:false}));}catch{}message('Local cache for this account could not be read and was reset. Syncing your history from the cloud.');}KEY=nextKey;activeId=id;if(id)localStorage.setItem('hybridActiveAccount',id);else localStorage.removeItem('hybridActiveAccount');db=next;blocked=false;render();},
  legacy:()=>{const raw=localStorage.getItem('hybridTrackerV2');return raw?JSON.parse(raw):null;},
  download
 });
