@@ -1,8 +1,8 @@
-import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS} from './reporting.js?v=3.17.0';
-import {sessions,statistics,duration} from './plunge.js?v=3.17.0';
-import {deletePlunge} from './deletion.js?v=3.17.0';
-import {addDays} from './core.js?v=3.17.0';
-import {daySummary} from './wellness.js?v=3.17.0';
+import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS} from './reporting.js?v=3.17.1';
+import {sessions,statistics,duration} from './plunge.js?v=3.17.1';
+import {deletePlunge} from './deletion.js?v=3.17.1';
+import {addDays} from './core.js?v=3.17.1';
+import {daySummary} from './wellness.js?v=3.17.1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const weekday=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{weekday:'short'});
 const monthLabel=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
