@@ -1,4 +1,4 @@
-import {base} from './program.js?v=3.15.4';
+import {base} from './program.js?v=3.15.5';
 export const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 export function validDate(s){return typeof s==='string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(Date.parse(s)) && new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;}
 export const stamp=s=>Date.parse(s+'T00:00:00Z');
@@ -8,7 +8,7 @@ export const weekday=s=>(new Date(stamp(s)).getUTCDay()+6)%7;
 export function cycle(date,start){if(date<start)return null;const anchor=addDays(start,(7-weekday(start))%7);if(date<anchor)return {week:1,number:0,day:DAYS[weekday(date)],partial:true};const offset=Math.floor((stamp(date)-stamp(anchor))/86400000);return {week:Math.floor(offset/7)%4+1,number:Math.floor(offset/28)+1,day:DAYS[weekday(date)]};}
 export const weekSaturday=date=>addDays(date,5-weekday(date));
 export function resolveLongDay(db,date){return (db.longDayOverrides&&db.longDayOverrides[weekSaturday(date)])||db.longDay||'Sat';}
-export function plan(date,start,days={},longDay='Sat'){if(days[date]?.tasks)return days[date].tasks;const c=cycle(date,start);return c?base(c.day,c.week,longDay).map((t,i)=>({...t,id:String(i),optional:t.n.includes('optional'),lift:t.n.startsWith('Lift ')})):[];}
+export function plan(date,start,days={},longDay='Sat'){if(days[date]?.tasks)return days[date].tasks;const c=cycle(date,start);return c?base(c.day,c.week,longDay).map((t,i)=>({...t,id:String(i),optional:t.n.includes('optional'),lift:t.n.startsWith('Lift '),ex:t.ex||[]})):[];}
 export function status(record,tasks,date,now=today()) {if(date>now || !record || !tasks.length)return 'empty';if(record.missed)return 'missed';const required=tasks.filter(t=>!t.optional);if(required.length&&required.every(t=>record.done?.[t.id]))return 'complete';return tasks.some(t=>record.done?.[t.id])?'partial':'empty';}
 export function setCount(ex,week){let n=Number(ex.match(/— (\d)/)?.[1]||3);return week===4?Math.max(1,Math.round(n*.7)):n;}
 export function previous(db,date,lift,exercise){

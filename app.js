@@ -1,8 +1,8 @@
-import {deletePlunge,removeActivity} from './deletion.js?v=3.15.4';
-import {mountPlunge} from './plunge-ui.js?v=3.15.4';
+import {deletePlunge,removeActivity} from './deletion.js?v=3.15.5';
+import {mountPlunge} from './plunge-ui.js?v=3.15.5';
 let refreshPlunge=()=>{};
-import {connectCloud} from './cloud.js?v=3.15.4';
-import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay,weekSaturday} from './core.js?v=3.15.4';
+import {connectCloud} from './cloud.js?v=3.15.5';
+import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay,weekSaturday} from './core.js?v=3.15.5';
 const $=id=>document.getElementById(id); let activeId=localStorage.getItem('hybridActiveAccount')||null; let KEY=activeId?'hybridAccount:'+activeId:'hybridTrackerV2'; let cloud=null;
 const message=s=>$('message').textContent=s;
 let db,legacy=null,blocked=false;
@@ -11,7 +11,7 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.15.4 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.15.5 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && (!!cycle(selected,db.start)||!!db.days[selected]?.tasks?.length);}
 const activityKinds=[
@@ -81,7 +81,7 @@ let editingId=null,editingDate=null;
 function openEditor(id=null){if(blocked)return;const t=plan(selected,db.start,db.days,resolveLongDay(db,selected)).find(t=>t.id===id);editingId=id;editingDate=selected;$('edit-name').value=t?label(t):'';$('edit-optional').checked=t?.optional??true;$('edit-heading').textContent=id?'Edit workout':'Add a workout';$('edit-error').textContent='';$('workout-editor').showModal();}
 $('add-workout').onclick=()=>openEditor();
 $('edit-cancel').onclick=()=>$('workout-editor').close();
-$('edit-form').onsubmit=e=>{e.preventDefault();if(blocked||editingDate!==selected)return;const name=$('edit-name').value.trim();if(!name){$('edit-error').textContent='Enter a workout type.';return;}const r=rec();r.tasks||=structuredClone(plan(selected,db.start,db.days,resolveLongDay(db,selected)));if(editingId){const t=r.tasks.find(t=>t.id===editingId);t.n=name;t.optional=$('edit-optional').checked;}else r.tasks.push({id:'custom-'+crypto.randomUUID(),n:name,lift:false,optional:$('edit-optional').checked,ex:[]});save();$('workout-editor').close();render();};
+$('edit-form').onsubmit=e=>{e.preventDefault();if(blocked||editingDate!==selected)return;const name=$('edit-name').value.trim();if(!name){$('edit-error').textContent='Enter a workout type.';return;}const r=rec();r.tasks||=structuredClone(plan(selected,db.start,db.days,resolveLongDay(db,selected))).map(t=>({...t,ex:t.ex||[]}));if(editingId){const t=r.tasks.find(t=>t.id===editingId);t.n=name;t.optional=$('edit-optional').checked;}else r.tasks.push({id:'custom-'+crypto.randomUUID(),n:name,lift:false,optional:$('edit-optional').checked,ex:[]});save();$('workout-editor').close();render();};
 $('start-tomorrow').onclick=()=>{if(blocked)return;$('start').value=addDays(today(),1);$('start').dispatchEvent(new Event('change'));selected=$('start').value;month=selected.slice(0,7)+'-01';render();showView('day');};
 
 refreshPlunge=mountPlunge({db:()=>db,date:()=>selected,today,account:()=>activeId||"local",blocked:()=>blocked,save,refresh:render});
