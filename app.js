@@ -1,11 +1,12 @@
-import {deletePlunge,removeActivity} from './deletion.js?v=3.16.0';
-import {mountPlunge} from './plunge-ui.js?v=3.16.0';
+import {deletePlunge,removeActivity} from './deletion.js?v=3.16.1';
+import {mountPlunge} from './plunge-ui.js?v=3.16.1';
 let refreshPlunge=()=>{},refreshReport=()=>{};
-import {connectCloud} from './cloud.js?v=3.16.0';
-import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay,weekSaturday} from './core.js?v=3.16.0';
-import {renderWellness} from './wellness-ui.js?v=3.16.0';
-import {mountReporting} from './reporting-ui.js?v=3.16.0';
-import {mountSuggestions} from './suggestions-ui.js?v=3.16.0';
+import {connectCloud} from './cloud.js?v=3.16.1';
+import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay,weekSaturday} from './core.js?v=3.16.1';
+import {renderWellness} from './wellness-ui.js?v=3.16.1';
+import {isExercise} from './wellness.js?v=3.16.1';
+import {mountReporting} from './reporting-ui.js?v=3.16.1';
+import {mountSuggestions} from './suggestions-ui.js?v=3.16.1';
 const $=id=>document.getElementById(id); let activeId=localStorage.getItem('hybridActiveAccount')||null; let KEY=activeId?'hybridAccount:'+activeId:'hybridTrackerV2'; let cloud=null;
 const message=s=>$('message').textContent=s;
 let db,legacy=null,blocked=false;
@@ -14,7 +15,7 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.16.0 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.16.1 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && (!!cycle(selected,db.start)||!!db.days[selected]?.tasks?.length);}
 const activityKinds=[
@@ -36,7 +37,7 @@ function calendar(){
  }
  $('calendar').innerHTML=html;$('calendar').querySelectorAll('button').forEach(b=>b.onclick=()=>{selected=b.dataset.date;render();showView('day');$('date').focus();});
 }
-function showView(view){document.querySelector('.calendar-panel').hidden=view!=='calendar';document.querySelector('.detail').hidden=view!=='day';document.querySelector('.layout').hidden=!(view==='day'||view==='calendar');const history=$('plunge-history');if(history)history.hidden=view!=='plunge';const wellness=$('wellness');if(wellness)wellness.hidden=view!=='day';const report=$('report-panel');if(report)report.hidden=view!=='report';if(view==='report')refreshReport();const utilities=document.querySelector('.utilities');if(utilities)utilities.hidden=view!=='utilities';document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));}
+function showView(view){document.querySelector('.calendar-panel').hidden=view!=='calendar';document.querySelector('.detail').hidden=view!=='day';document.querySelector('.layout').hidden=!(view==='day'||view==='calendar');const wellness=$('wellness');if(wellness)wellness.hidden=view!=='day';const report=$('report-panel');if(report)report.hidden=view!=='report';if(view==='report')refreshReport();const utilities=document.querySelector('.utilities');if(utilities)utilities.hidden=view!=='utilities';document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));}
 function label(t){if(/^Cold plunge/i.test(t.n))return 'Cold plunge';if(/^Lift [ABC]/.test(t.n))return 'Full-body lifting'+(cycle(selected,db.start)?.week===4?' · Deload':'');return t.n.split(' — ')[0];}
 function render(){
  calendar();$('start').value=db.start;$('long-day').value=db.longDay||'Sat';
@@ -49,7 +50,7 @@ function render(){
  $('logging').hidden=!c&&!tasks.length;$('add-workout').disabled=blocked||!c;
  $('tasks').innerHTML=tasks.map(t=>{const detail=t.n.includes(' — ')?t.n.slice(t.n.indexOf(' — ')+3):'';const steps=(!t.lift&&t.ex&&t.ex.length)?`<ul class="instructions">${t.ex.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'';return `<div class="task"><div class="workout-row"><label class="task-label"><input type="checkbox" data-task="${esc(t.id)}" ${r.done?.[t.id]?'checked':''} ${disabled}><span>${esc(label(t))}${t.optional?' <small>Optional</small>':''}</span></label><button data-edit="${esc(t.id)}" ${blocked?'disabled':''}>Edit</button><button data-remove-activity="${esc(t.id)}" ${blocked?'disabled':''}>Remove</button></div>${detail?`<p class="muted task-detail">${esc(detail)}</p>`:''}${steps}${/^Cold plunge/i.test(t.n)?plungeFields(t,r,disabled):''}</div>`;}).join('');
  $('notes').value=r.notes||'';$('notes').disabled=!editable();['all','miss','clear'].forEach(id=>$(id).disabled=!editable());
- $('tasks').querySelectorAll('[data-task]').forEach(el=>el.onchange=()=>{if(!editable())return;rec().done[el.dataset.task]=el.checked;rec().missed=false;save();render();});
+ $('tasks').querySelectorAll('[data-task]').forEach(el=>el.onchange=()=>{if(!editable())return;const id=el.dataset.task;if(el.checked){const t=tasks.find(t=>t.id===id);if(t&&isExercise(t)){el.checked=false;openActivityLog(id,t);return;}}rec().done[id]=el.checked;rec().missed=false;save();render();});
  $('tasks').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(b.dataset.edit));
  $('tasks').querySelectorAll('[data-plunge]').forEach(el=>el.oninput=()=>{if(!editable()||!el.validity.valid)return;const r=rec();r.plunges||={};r.plunges[el.dataset.plunge]||=[];r.plunges[el.dataset.plunge][Number(el.dataset.session)]||={};r.plunges[el.dataset.plunge][Number(el.dataset.session)][el.dataset.field]=el.value;if(el.dataset.field==='temperature')r.plunges[el.dataset.plunge][Number(el.dataset.session)].unit='F';save();});
  $('tasks').querySelectorAll('[data-add-session]').forEach(b=>b.onclick=()=>{if(!editable())return;const r=rec();r.plunges||={};r.plunges[b.dataset.addSession]||=[{}];r.plunges[b.dataset.addSession].push({});save();render();});
@@ -86,6 +87,11 @@ function openEditor(id=null){if(blocked)return;const t=plan(selected,db.start,db
 $('add-workout').onclick=()=>openEditor();
 $('edit-cancel').onclick=()=>$('workout-editor').close();
 $('edit-form').onsubmit=e=>{e.preventDefault();if(blocked||editingDate!==selected)return;const name=$('edit-name').value.trim();if(!name){$('edit-error').textContent='Enter a workout type.';return;}const r=rec();r.tasks||=structuredClone(plan(selected,db.start,db.days,resolveLongDay(db,selected))).map(t=>({...t,ex:t.ex||[]}));if(editingId){const t=r.tasks.find(t=>t.id===editingId);t.n=name;t.optional=$('edit-optional').checked;}else r.tasks.push({id:'custom-'+crypto.randomUUID(),n:name,lift:false,optional:$('edit-optional').checked,ex:[]});save();$('workout-editor').close();render();};
+
+let logId=null,logDate=null;
+function openActivityLog(id,t){logId=id;logDate=selected;const existing=rec().sessions?.[id];$('log-activity-name').textContent=label(t);$('log-minutes').value=existing?.minutes??'';$('log-rpe').value=existing?.rpe??'';$('log-activity-error').textContent='';$('log-activity').showModal();}
+$('log-activity-cancel').onclick=()=>$('log-activity').close();
+$('log-activity-form').onsubmit=e=>{e.preventDefault();if(blocked||logDate!==selected){$('log-activity-error').textContent='This date changed. Close and try again.';return;}const minutes=$('log-minutes').value;if(minutes===''||+minutes<0){$('log-activity-error').textContent='Enter actual minutes (0 or more).';return;}const r=rec();r.sessions||={};r.sessions[logId]={minutes,rpe:$('log-rpe').value};r.done[logId]=true;r.missed=false;save();$('log-activity').close();render();};
 $('start-tomorrow').onclick=()=>{if(blocked)return;$('start').value=addDays(today(),1);$('start').dispatchEvent(new Event('change'));selected=$('start').value;month=selected.slice(0,7)+'-01';render();showView('day');};
 
 const handle={db:()=>db,date:()=>selected,today,account:()=>activeId||"local",blocked:()=>blocked,save,refresh:render,commit:(d,record)=>{db.days[d]=record;save();render();}};

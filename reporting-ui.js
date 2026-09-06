@@ -1,12 +1,12 @@
-import {periodRange,rangeSummary,PERIODS} from './reporting.js?v=3.16.0';
-import {sessions,statistics,duration} from './plunge.js?v=3.16.0';
-import {deletePlunge} from './deletion.js?v=3.16.0';
+import {periodRange,rangeSummary,PERIODS} from './reporting.js?v=3.16.1';
+import {sessions,statistics,duration} from './plunge.js?v=3.16.1';
+import {deletePlunge} from './deletion.js?v=3.16.1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function mountReporting(h){
  let box=document.getElementById('report-panel');
  if(!box){
   box=document.createElement('section');box.id='report-panel';box.className='card';box.hidden=true;box.setAttribute('aria-label','Training reports');
-  box.innerHTML=`<h2>Reporting</h2><label>Period<select id="report-period">${PERIODS.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select></label><p id="report-range" class="muted"></p><div class="plunge-stats" id="report-stats"></div><p class="muted">Actual minutes and effort come from entries saved under "Actual workout time and effort" on the Day view. Unlogged sessions are not counted as zero.</p><details open><summary>Sets by muscle area</summary><div id="report-groups"></div></details><hr><h3>Cold plunge</h3><div class="plunge-stats" id="report-plunge-stats"></div><details><summary>Activity chart</summary><div id="report-plunge-chart" class="plunge-chart"></div></details><details><summary>Session feed</summary><div id="report-plunge-feed"></div></details>`;
+  box.innerHTML=`<h2>Reporting</h2><label>Period<select id="report-period">${PERIODS.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select></label><p id="report-range" class="muted"></p><div class="plunge-stats" id="report-stats"></div><p class="muted">Actual minutes and effort come from checking workouts complete on the Day view (or the "Actual workout time and effort" section there). Unlogged sessions are not counted as zero.</p><details open><summary>Sets by muscle area</summary><div id="report-groups"></div></details><hr><h3>Cold plunge</h3><div class="plunge-stats" id="report-plunge-stats"></div><details><summary>Activity chart</summary><div id="report-plunge-chart" class="plunge-chart"></div></details><details><summary>Session feed</summary><div id="report-plunge-feed"></div></details>`;
   document.querySelector('.layout').after(box);
   let saved=null;try{saved=localStorage.getItem('hybridReportPeriod');}catch{}
   if(saved&&PERIODS.some(p=>p[0]===saved))box.querySelector('#report-period').value=saved;
