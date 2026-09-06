@@ -1,8 +1,8 @@
-import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS} from './reporting.js?v=3.17.1';
-import {sessions,statistics,duration} from './plunge.js?v=3.17.1';
-import {deletePlunge} from './deletion.js?v=3.17.1';
-import {addDays} from './core.js?v=3.17.1';
-import {daySummary} from './wellness.js?v=3.17.1';
+import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS} from './reporting.js?v=3.17.2';
+import {sessions,statistics,duration} from './plunge.js?v=3.17.2';
+import {deletePlunge} from './deletion.js?v=3.17.2';
+import {addDays} from './core.js?v=3.17.2';
+import {daySummary} from './wellness.js?v=3.17.2';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const weekday=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{weekday:'short'});
 const monthLabel=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
@@ -11,7 +11,7 @@ export function mountReporting(h){
  let box=document.getElementById('report-panel');
  if(!box){
   box=document.createElement('section');box.id='report-panel';box.className='card';box.hidden=true;box.setAttribute('aria-label','Training reports');
-  box.innerHTML=`<h2>Reporting</h2><label>Period<select id="report-period">${PERIODS.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select></label><div class="bar" id="report-nav" hidden><button id="report-prev" aria-label="Previous period">←</button><h3 id="report-range-label"></h3><button id="report-next" aria-label="Next period">→</button></div><button id="report-today-btn" hidden>Back to current</button><p id="report-range" class="muted"></p><div class="plunge-stats" id="report-stats"></div><p class="muted">Actual minutes and effort come from checking workouts complete on the Day view. Unlogged sessions are not counted as zero.</p><details open><summary>Sets by muscle area</summary><div id="report-groups"></div></details><hr><h3>Cold plunge</h3><div class="plunge-stats" id="report-plunge-stats"></div><div id="report-daily"></div><details id="report-chart-details"><summary>Activity chart</summary><div id="report-plunge-chart" class="plunge-chart"></div></details><details><summary>Session feed</summary><div id="report-plunge-feed"></div></details>`;
+  box.innerHTML=`<h2>Reporting</h2><label>Period<select id="report-period">${PERIODS.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select></label><div class="bar" id="report-nav" hidden><button id="report-prev" aria-label="Previous period">←</button><h3 id="report-range-label"></h3><button id="report-next" aria-label="Next period">→</button></div><button id="report-today-btn" hidden>Back to current</button><p id="report-range" class="muted"></p><div class="plunge-stats" id="report-stats"></div><p class="muted">Actual minutes and effort come from checking workouts complete on the Day view. Unlogged sessions are not counted as zero.</p><hr><h3>Cold plunge</h3><div class="plunge-stats" id="report-plunge-stats"></div><div id="report-daily"></div><details id="report-chart-details"><summary>Activity chart</summary><div id="report-plunge-chart" class="plunge-chart"></div></details><details><summary>Session feed</summary><div id="report-plunge-feed"></div></details>`;
   document.querySelector('.layout').after(box);
   let saved=null;try{saved=localStorage.getItem('hybridReportPeriod');}catch{}
   if(saved&&PERIODS.some(p=>p[0]===saved))box.querySelector('#report-period').value=saved;
@@ -33,7 +33,6 @@ export function mountReporting(h){
   $('#report-range').textContent=start+' to '+end;
   const s=rangeSummary(db,start,end);
   $('#report-stats').innerHTML=`<div><small>Workouts done</small><strong>${s.completed} / ${s.planned}</strong></div><div><small>Actual minutes</small><strong>${s.logged?s.minutes:'—'}</strong></div><div><small>Effort units</small><strong>${s.rated?s.load:'—'}</strong></div>`;
-  $('#report-groups').innerHTML=Object.keys(s.groups).length?'<ul>'+Object.entries(s.groups).map(([k,v])=>`<li>${esc(k)}: ${v}</li>`).join('')+'</ul>':'<p class="muted">No set reps recorded in this period.</p>';
   const rows=sessions(db).filter(r=>r.date>=start&&r.date<=end),unit='F',stats=statistics(rows,unit);
   const byDate={};rows.forEach(r=>(byDate[r.date]||=[]).push(r));
   $('#report-plunge-stats').innerHTML=`<div><small>Sessions</small><strong>${stats.count}</strong></div><div><small>Total time</small><strong>${duration(stats.total)}</strong></div><div><small>Average temperature</small><strong>${stats.temperature===null?'—':stats.temperature.toFixed(1)+'°'+unit}</strong></div>`;

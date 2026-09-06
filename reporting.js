@@ -1,5 +1,5 @@
-import {addDays} from './core.js?v=3.17.1';
-import {daySummary} from './wellness.js?v=3.17.1';
+import {addDays} from './core.js?v=3.17.2';
+import {daySummary} from './wellness.js?v=3.17.2';
 export const PERIODS=[['week','This week'],['month','This month'],['3m','Last 3 months'],['6m','Last 6 months'],['year','Last 12 months'],['ytd','Year to date']];
 export const NAVIGABLE=new Set(['week','month']);
 export function periodRange(period,anchor,today){
@@ -21,11 +21,10 @@ export function isCurrentPeriod(period,anchor,today){
  return true;
 }
 export function rangeSummary(db,start,end){
- let planned=0,completed=0,minutes=0,cardio=0,load=0,rated=0,logged=0;const groups={};
+ let planned=0,completed=0,minutes=0,cardio=0,load=0,rated=0,logged=0;
  for(let d=start;d<=end;d=addDays(d,1)){
   const s=daySummary(db,d);
   planned+=s.planned;completed+=s.completed;minutes+=s.minutes;cardio+=s.cardio;load+=s.load;rated+=s.rated;logged+=s.logged;
-  for(const k in s.groups)groups[k]=(groups[k]||0)+s.groups[k];
  }
- return {planned,completed,minutes,cardio,load,rated,logged,groups};
+ return {planned,completed,minutes,cardio,load,rated,logged};
 }
