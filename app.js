@@ -1,5 +1,5 @@
 import {deletePlunge,removeActivity} from './deletion.js';
-import {mountPlunge} from './plunge-ui.js?v=3.11.0';
+import {mountPlunge} from './plunge-ui.js?v=3.12.0';
 let refreshPlunge=()=>{};
 import {connectCloud} from './cloud.js';
 import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask} from './core.js';
@@ -11,11 +11,11 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.11.0 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.12.0 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && (!!cycle(selected,db.start)||!!db.days[selected]?.tasks?.length);}
 const activityKinds=[
- ['plunge','Cold plunge',/cold|plunge/i,'M3 7q3-3 6 0t6 0t6 0M3 12q3-3 6 0t6 0t6 0M3 17q3-3 6 0t6 0t6 0'],
+ ['plunge','Cold plunge',/^cold|^plunge/i,'M3 7q3-3 6 0t6 0t6 0M3 12q3-3 6 0t6 0t6 0M3 17q3-3 6 0t6 0t6 0'],
  ['lift','Lifting',/lift|strength|body|kettlebell/i,'M6 8v8M3 10v4M18 8v8M21 10v4M6 12h12'],
  ['bike','Bike',/bike|cycl/i,'M8 16a3 3 0 1 1-6 0a3 3 0 1 1 6 0M22 16a3 3 0 1 1-6 0a3 3 0 1 1 6 0M5 16l5-8 5 8H5M10 8h7l2 8M9 5h3'],
  ['run','Run',/run|tempo|vo₂|vo2/i,'M14 4h1M9 20l3-6 4 3 2 4M6 12l4-5 4 2 3 4h4M10 7l2 7'],
