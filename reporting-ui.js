@@ -1,6 +1,6 @@
-import {periodRange,rangeSummary,PERIODS} from './reporting.js?v=3.16.2';
-import {sessions,statistics,duration} from './plunge.js?v=3.16.2';
-import {deletePlunge} from './deletion.js?v=3.16.2';
+import {periodRange,rangeSummary,PERIODS} from './reporting.js?v=3.16.3';
+import {sessions,statistics,duration} from './plunge.js?v=3.16.3';
+import {deletePlunge} from './deletion.js?v=3.16.3';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function mountReporting(h){
  let box=document.getElementById('report-panel');
