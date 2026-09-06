@@ -1,3 +1,3 @@
-# Hybrid Training Tracker V3.14.0
+# Hybrid Training Tracker V3.15.0
 
-The day view now shows what's actually prescribed for each task instead of just the short category name: a muted subtitle with the full duration/detail (e.g. "60 min Zone 2"), and for structured sessions like Tempo bike or Norwegian 4x4 run, the warm-up/interval/cooldown steps as a reference checklist. Nothing about the underlying data changed - this was previously stored correctly but hidden by the day view's label truncation.
+The long-workout day is now per-week, not one fixed global choice. "Default long workout day" (Calendar tab) is the fallback; "This week's long workout day" (Day view, next to the date) overrides just that one week - Saturday one week, Sunday the next, back to the default after that, in any pattern. Whichever day isn't chosen becomes the recovery/basketball day, same as before.
