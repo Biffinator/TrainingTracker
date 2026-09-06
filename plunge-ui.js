@@ -1,12 +1,34 @@
-import {plan,resolveLongDay} from './core.js?v=3.15.1';
-import {deletePlunge} from './deletion.js?v=3.15.1';
-import {clockState,duration,sessions,statistics} from './plunge.js?v=3.15.1';
+import {plan,resolveLongDay} from './core.js?v=3.15.2';
+import {deletePlunge} from './deletion.js?v=3.15.2';
+import {clockState,duration,sessions,statistics} from './plunge.js?v=3.15.2';
 export function mountPlunge(h){
  const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const key=()=> 'hybridPlungeTimer:'+h.account();let run=null,wake=null,countdownEnd=null,pendingSetup=null,goalToneDone=false,audioCtx=null;
- function ensureAudio(){if(!audioCtx){try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();}catch{audioCtx=null;}}if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});}
- function beep(freq,ms){if(!audioCtx)return;try{const t0=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type='sine';osc.frequency.value=freq;gain.gain.setValueAtTime(0.0001,t0);gain.gain.exponentialRampToValueAtTime(0.3,t0+0.01);gain.gain.exponentialRampToValueAtTime(0.0001,t0+ms/1000);osc.connect(gain).connect(audioCtx.destination);osc.start(t0);osc.stop(t0+ms/1000+0.02);}catch{}}
- const dialog=document.createElement('dialog');dialog.id='plunge-timer';dialog.innerHTML=`<h2>Cold plunge</h2><form id="plunge-setup"><div class="plunge-grid"><label>Temperature (°F)<input id="timer-temp" type="number" step="any" inputmode="decimal" placeholder="45.6"></label><label>Goal minutes<input id="timer-min" type="number" min="0" max="1440" step="1" value="3" required></label><label>Goal seconds<input id="timer-sec" type="number" min="0" max="59" step="1" value="0" required></label><label>Countdown before start (sec)<input id="timer-countdown" type="number" min="1" max="5" step="1" value="3" required></label></div><button class="primary" type="submit">Start plunge</button></form><div id="plunge-running" hidden><p id="timer-phase"></p><div id="plunge-clock" role="timer"></div><p id="timer-total"></p><button class="primary" id="timer-stop">Stop & save session</button></div><p id="timer-error" role="status"></p><p class="muted">A short countdown gives you time to get in before the timer starts; you'll hear a tone when it begins and again when you reach your goal time, then it continues counting up. Total time runs until you stop. Keep this screen open to watch the timer; it catches up when you return after locking your phone.</p><button id="timer-close">Close</button>`;document.body.append(dialog);
+ const key=()=> 'hybridPlungeTimer:'+h.account();let run=null,wake=null,countdownEnd=null,pendingSetup=null,goalToneDone=false,audioCtx=null,mediaDest=null,alarmVideo=null;
+ function ensureAudio(){
+  if(!audioCtx){
+   try{
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    // Route tones through a hidden <video> element instead of straight to the
+    // AudioContext destination. iOS Safari mutes plain Web Audio / <audio> output
+    // when the hardware silent switch is on, but treats <video> playback as a
+    // different audio session category that ignores the switch. Feeding the
+    // oscillator into a MediaStream and playing it back through a <video> tag
+    // (even with no visible video track) gets alarms to sound in silent mode.
+    mediaDest=audioCtx.createMediaStreamDestination();
+    alarmVideo=document.createElement('video');
+    alarmVideo.srcObject=mediaDest.stream;
+    alarmVideo.setAttribute('playsinline','');
+    alarmVideo.setAttribute('webkit-playsinline','');
+    alarmVideo.muted=false;
+    alarmVideo.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+    document.body.appendChild(alarmVideo);
+   }catch{audioCtx=null;mediaDest=null;alarmVideo=null;}
+  }
+  if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});
+  if(alarmVideo&&alarmVideo.paused)alarmVideo.play().catch(()=>{});
+ }
+ function beep(freq,ms){if(!audioCtx)return;try{const t0=audioCtx.currentTime,osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type='sine';osc.frequency.value=freq;gain.gain.setValueAtTime(0.0001,t0);gain.gain.exponentialRampToValueAtTime(0.3,t0+0.01);gain.gain.exponentialRampToValueAtTime(0.0001,t0+ms/1000);osc.connect(gain).connect(mediaDest||audioCtx.destination);osc.start(t0);osc.stop(t0+ms/1000+0.02);}catch{}}
+ const dialog=document.createElement('dialog');dialog.id='plunge-timer';dialog.innerHTML=`<h2>Cold plunge</h2><form id="plunge-setup"><div class="plunge-grid"><label>Temperature (°F)<input id="timer-temp" type="number" step="any" inputmode="decimal" placeholder="45.6"></label><label>Goal minutes<input id="timer-min" type="number" min="0" max="1440" step="1" value="3"></label><label>Goal seconds<input id="timer-sec" type="number" min="0" max="59" step="1" value="0" required></label><label>Countdown before start (sec)<input id="timer-countdown" type="number" min="1" max="5" step="1" value="3" required></label></div><button class="primary" type="submit">Start plunge</button></form><div id="plunge-running" hidden><p id="timer-phase"></p><div id="plunge-clock" role="timer"></div><p id="timer-total"></p><button class="primary" id="timer-stop">Stop & save session</button></div><p id="timer-error" role="status"></p><p class="muted">A short countdown gives you time to get in before the timer starts; you'll hear a tone when it begins and again when you reach your goal time, then it continues counting up. Total time runs until you stop. Keep this screen open to watch the timer; it catches up when you return after locking your phone.</p><button id="timer-close">Close</button>`;document.body.append(dialog);
  const panel=document.createElement('section');panel.className='card';panel.id='plunge-history';panel.innerHTML=`<h2>Cold plunge history</h2><div class="actions"><label>Period<select id="plunge-period"><option value="week">This week</option><option value="month">This month</option><option value="year">This year</option><option value="all">All time</option></select></label><button id="manual-plunge">Add past session</button></div><div id="plunge-stats" class="plunge-stats"></div><details><summary>Activity chart</summary><div id="plunge-chart" class="plunge-chart"></div></details><details><summary>Session feed</summary><div id="plunge-feed"></div></details>`;document.querySelector('footer').before(panel);
  async function keepAwake(){try{wake=await navigator.wakeLock?.request('screen');}catch{}}
  function release(){wake?.release().catch(()=>{});wake=null;}
@@ -19,7 +41,7 @@ export function mountPlunge(h){
   if(!run)return;const s=clockState(run);if(s.over&&!goalToneDone){goalToneDone=true;beep(660,300);}$('plunge-clock').textContent=(s.over?'+':'')+duration(s.display);$('timer-phase').textContent=s.over?'Goal reached · extra time':'Time remaining';$('timer-total').textContent='Total session time '+duration(s.elapsed);
  }
  function ui(){ $('plunge-setup').hidden=!!run||!!countdownEnd;$('plunge-running').hidden=!run&&!countdownEnd;$('timer-stop').textContent=countdownEnd?'Cancel':'Stop & save session';tick();}
- function open(task){read();if(!run){dialog.dataset.task=task;dialog.dataset.date=h.date();}ui();$('timer-error').textContent='';dialog.showModal();if(run)keepAwake();}
+ function open(task){read();if(!run){dialog.dataset.task=task;dialog.dataset.date=h.date();}ui();$('timer-error').textContent='';dialog.showModal();ensureAudio();if(run)keepAwake();}
  $('plunge-setup').onsubmit=e=>{e.preventDefault();if(h.blocked()||h.date()!==h.today()){ $('timer-error').textContent='Select today to start a live timer.';return;}const goal=+$('timer-min').value*60+ +$('timer-sec').value;if(goal<=0){$('timer-error').textContent='Enter a goal longer than zero.';return;}read();ensureAudio();if(run){ui();return;}const secs=Math.min(5,Math.max(1,Math.round(+$('timer-countdown').value)||3));pendingSetup={goal,temperature:$('timer-temp').value,task:dialog.dataset.task,date:dialog.dataset.date};countdownEnd=Date.now()+secs*1000;keepAwake();ui();};
  $('timer-stop').onclick=()=>{if(countdownEnd){countdownEnd=null;pendingSetup=null;release();ui();return;}read();if(!run)return;if(h.blocked()){ $('timer-error').textContent='Reload to resolve the changed history, then reopen the timer to save.';return;}run.stoppedAt??=Date.now();localStorage.setItem(key(),JSON.stringify(run));const total=clockState(run).elapsed;if(total<1){$('timer-error').textContent='Session is shorter than one second. Close and discard it.';return;}const db=h.db();const r=db.days[run.date]||{done:{},notes:'',missed:false,sets:{}};r.plunges||={};r.plunges[run.task]||=[];if(!r.plunges[run.task].some(s=>s?.id===run.id))r.plunges[run.task].push({id:run.id,minutes:String(Math.floor(total/60)),seconds:String(total%60),temperature:run.temperature,unit:run.unit,time:run.time,goalSeconds:run.goal});r.done[run.task]=true;r.missed=false;db.days[run.date]=r;if(!h.save()){ $('timer-error').textContent='Could not save. Your stopped timer is retained; try again.';return;}localStorage.removeItem(key());run=null;release();dialog.close();h.refresh();refresh();};
  $('timer-close').onclick=()=>{if(run&&run.stoppedAt&&clockState(run).elapsed<1&&confirm('Discard this empty session?')){localStorage.removeItem(key());run=null;}dialog.close();release();};dialog.addEventListener('close',release);
