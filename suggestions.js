@@ -1,5 +1,5 @@
-import {plan,addDays,cycle,validateTasks,replaceTask,resolveLongDay} from './core.js?v=3.18.0';
-import {HIIT_CYCLE} from './program.js?v=3.18.0';
+import {plan,addDays,cycle,validateTasks,replaceTask,resolveLongDay} from './core.js?v=3.18.1';
+import {HIIT_CYCLE} from './program.js?v=3.18.1';
 export function workload(db,date,replace=''){
  const demanding=t=>t.lift||/long run|long bike|tempo|4×4|basketball/i.test(t.n);
  const today=plan(date,db.start,db.days,resolveLongDay(db,date)).filter(t=>t.id!==replace);
@@ -10,6 +10,7 @@ export function workload(db,date,replace=''){
 export function suggest(db,date,{type='full',replace=''}={}){
  if(type==='plunge')return {name:'Cold plunge',ex:[],lift:false,optional:false};
  if(type==='hiit')return {name:'HIIT Cycle',ex:HIIT_CYCLE,lift:false};
+ if(type==='endurance')return {name:'Endurance',ex:[],lift:false};
  const {busy,deload}=workload(db,date,replace),light=busy||deload;
  let name,ex,lift=false;
  if(type==='recovery'){name='Recovery / mobility';ex=['Easy walk or gentle cycling — 15 min, conversational pace','Gentle comfortable mobility — 5 min; avoid painful movements'];}

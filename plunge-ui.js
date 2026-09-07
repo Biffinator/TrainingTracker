@@ -1,5 +1,5 @@
-import {plan,resolveLongDay} from './core.js?v=3.18.0';
-import {clockState,duration} from './plunge.js?v=3.18.0';
+import {plan,resolveLongDay} from './core.js?v=3.18.1';
+import {clockState,duration} from './plunge.js?v=3.18.1';
 export function mountPlunge(h){
  const $=id=>document.getElementById(id);
  const key=()=> 'hybridPlungeTimer:'+h.account();let run=null,wake=null,countdownEnd=null,pendingSetup=null,goalToneDone=false,audioCtx=null,mediaDest=null,alarmVideo=null;

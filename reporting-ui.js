@@ -1,7 +1,7 @@
-import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS,sixMonthSpan,shiftMonths,isCurrentSixMonth} from './reporting.js?v=3.18.0';
-import {sessions,statistics,duration} from './plunge.js?v=3.18.0';
-import {deletePlunge} from './deletion.js?v=3.18.0';
-import {weekday} from './core.js?v=3.18.0';
+import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS,sixMonthSpan,shiftMonths,isCurrentSixMonth} from './reporting.js?v=3.18.1';
+import {sessions,statistics,duration} from './plunge.js?v=3.18.1';
+import {deletePlunge} from './deletion.js?v=3.18.1';
+import {weekday} from './core.js?v=3.18.1';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const monthLabel=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
 const monthShort=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'short',year:'2-digit'});
