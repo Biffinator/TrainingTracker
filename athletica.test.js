@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseIcs,mergeAthletica,isAthleticaTask} from './athletica.js';
+import {parseIcs,mergeAthletica,isAthleticaTask,stableId} from './athletica.js';
 import {plan} from './core.js';
 // Synthetic fixture mirroring Athletica's real feed shape: folded lines, escaped \n and \,,
 // all-day DTSTART with TZID, both duration formats, and a strength session that must be ignored.
@@ -53,9 +53,34 @@ test('re-merge keeps completion by stable id and drops sessions removed from the
  const updated=parseIcs(ICS).filter(e=>e.uid!=='bbb2'); // bike dropped from the plan
  assert.equal(mergeAthletica(db,updated,'2026-09-08'),1);
  const tue=plan('2026-09-08',db.start,db.days,'Sat');
- assert.deepEqual(tue.map(t=>t.id),['0','ath-ccc3']);
+ assert.deepEqual(tue.map(t=>t.id),['0','ath-2026-09-08-run-aerobic-development']);
  assert.equal(db.days['2026-09-08'].done['ath-ccc3'],true);
  assert.equal(mergeAthletica(db,updated,'2026-09-08'),0); // idempotent
+});
+test('ids come from date + sport + name, not the feed UID; duplicates are suffixed',()=>{
+ const ev=parseIcs(ICS);
+ assert.equal(stableId(ev[1]),'ath-2026-09-08-bike-aerobic-development');
+ const seen=new Set();assert.equal(stableId(ev[1],seen),'ath-2026-09-08-bike-aerobic-development');assert.equal(stableId(ev[1],seen),'ath-2026-09-08-bike-aerobic-development-2');
+});
+test('a re-fetch with brand-new UIDs keeps the checkmark and logged time',()=>{
+ const db=fresh();
+ mergeAthletica(db,parseIcs(ICS),'2026-09-08');
+ const run=plan('2026-09-08',db.start,db.days,'Sat').find(t=>/Run/.test(t.n));
+ db.days['2026-09-08'].done[run.id]=true;db.days['2026-09-08'].sessions={[run.id]:{minutes:21.5}};
+ const refetched=parseIcs(ICS.replace(/UID:(\w+)/g,'UID:x$1'));
+ assert.equal(mergeAthletica(db,refetched,'2026-09-08'),0); // nothing to change: ids are stable
+ assert.equal(db.days['2026-09-08'].done[run.id],true);
+ assert.equal(db.days['2026-09-08'].sessions[run.id].minutes,21.5);
+});
+test('rows saved under the old UID-based ids migrate their completion on the next sync',()=>{
+ const db=fresh();
+ db.days['2026-09-08']={done:{'0':true,'ath-6aa054afa4faf':true},notes:'',missed:false,sets:{},sessions:{'ath-6aa054afa4faf':{minutes:20}},tasks:[{id:'0',n:'Cold plunge',lift:false,optional:false,ex:[]},{id:'ath-6aa054afa4faf',n:'Aerobic Development — Run · 20 min',lift:false,optional:false,ex:[]},{id:'ath-6aa054afa4fe1',n:'Aerobic Development — Bike · 45 min',lift:false,optional:false,ex:[]}]};
+ assert.equal(mergeAthletica(db,parseIcs(ICS),'2026-09-08'),2);
+ const r=db.days['2026-09-08'];
+ assert.deepEqual(Object.keys(r.done).sort(),['0','ath-2026-09-08-run-aerobic-development']);
+ assert.equal(r.done['ath-2026-09-08-run-aerobic-development'],true);
+ assert.deepEqual(r.sessions,{'ath-2026-09-08-run-aerobic-development':{minutes:20}});
+ assert.ok(!r.tasks.some(t=>t.id.startsWith('ath-6aa')));
 });
 test('past days with older synced sessions are left untouched',()=>{
  const db=fresh();

@@ -1,4 +1,4 @@
-import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.23.0';
+import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.23.1';
 // Athletica publishes a per-user iCalendar feed (Settings → Profile → Plan Settings) of all-day
 // events named "<Sport> - <Workout name>" whose DESCRIPTION carries a "Duration: H:MM:SS|MM:SS" line.
 export const SYNC_DAYS=7;
@@ -30,10 +30,27 @@ export const isAthleticaTask=t=>String(t?.id||'').startsWith('ath-');
 // placeholder and the long-day "Long run"/"Long bike" slot. Everything else (Cold plunge, lifts,
 // the optional HIIT Cycle, treadmill days) is left alone.
 export const isPlaceholder=t=>{const n=String(t?.n||'');return n==='Endurance'||/^Long (run|bike)\b/i.test(n);};
-export function athleticaTask(e){
+// Athletica regenerates every UID on each feed build (they are uniqid() timestamps), so ids are
+// derived from what identifies a session to a person: its date, sport and name. Duplicates get -2, -3…
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,80);
+export function stableId(e,seen=new Set()){const base='ath-'+slug(`${e.date} ${e.sport} ${e.name}`);let id=base,i=2;while(seen.has(id))id=`${base}-${i++}`;seen.add(id);return id;}
+const sessionKey=t=>String(t.n).split(' · ')[0];
+export function athleticaTask(e,seen){
  const detail=[e.sport,e.minutes!=null?e.minutes+' min':null].filter(Boolean).join(' · ');
  const ex=e.description.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,30).map(s=>s.slice(0,500));
- return {id:'ath-'+e.uid,n:(e.name+(detail?' — '+detail:'')).slice(0,500),lift:false,optional:false,ex};
+ return {id:stableId(e,seen),n:(e.name+(detail?' — '+detail:'')).slice(0,500),lift:false,optional:false,ex};
+}
+// A synced row whose id changed (older UID-based ids, or a renamed duplicate) hands its checkmark and
+// logged time to the incoming row with the same name and sport, so a re-sync never un-completes a workout.
+function carryOver(rec,current,incoming){
+ if(!rec)return;const claimed=new Set();
+ for(const old of current.filter(isAthleticaTask)){
+  if(incoming.some(t=>t.id===old.id))continue;
+  const match=incoming.find(t=>!claimed.has(t.id)&&!current.some(c=>c.id===t.id)&&sessionKey(t)===sessionKey(old));
+  if(!match)continue;claimed.add(match.id);
+  if(rec.done&&old.id in rec.done){rec.done[match.id]=rec.done[old.id];delete rec.done[old.id];}
+  if(rec.sessions?.[old.id]){rec.sessions[match.id]=rec.sessions[old.id];delete rec.sessions[old.id];}
+ }
 }
 // Materialises each affected day's task list (the same per-day override the Edit dialog uses) so nothing
 // else in the app has to know about Athletica. Only a rolling window of `days` starting today is touched -
@@ -47,7 +64,8 @@ export function mergeAthletica(db,events,today,days=SYNC_DAYS){
  let changed=0;
  for(const d of dates){
   const current=plan(d,db.start,db.days,resolveLongDay(db,d)).map(t=>({...t,ex:t.ex||[]}));
-  const incoming=(byDate[d]||[]).map(athleticaTask);
+  const seen=new Set(),incoming=(byDate[d]||[]).map(e=>athleticaTask(e,seen));
+  carryOver(db.days[d],current,incoming);
   const next=[...current.filter(t=>!isAthleticaTask(t)&&!(incoming.length&&isPlaceholder(t))),...incoming];
   if(!next.length||JSON.stringify(next)===JSON.stringify(current))continue;
   validateTasks(next);
