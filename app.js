@@ -1,12 +1,13 @@
-import {deletePlunge,removeActivity} from './deletion.js?v=3.22.1';
-import {mountPlunge} from './plunge-ui.js?v=3.22.1';
+import {deletePlunge,removeActivity} from './deletion.js?v=3.23.0';
+import {mountPlunge} from './plunge-ui.js?v=3.23.0';
 let refreshPlunge=()=>{},refreshReport=()=>{};
-import {connectCloud} from './cloud.js?v=3.22.1';
-import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay} from './core.js?v=3.22.1';
-import {isExercise} from './wellness.js?v=3.22.1';
-import {mountReporting} from './reporting-ui.js?v=3.22.1';
-import {mountSuggestions} from './suggestions-ui.js?v=3.22.1';
-import {mergeAthletica} from './athletica.js?v=3.22.1';
+import {connectCloud} from './cloud.js?v=3.23.0';
+import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay} from './core.js?v=3.23.0';
+import {isExercise} from './wellness.js?v=3.23.0';
+import {mountReporting} from './reporting-ui.js?v=3.23.0';
+import {shiftMonths} from './reporting.js?v=3.23.0';
+import {mountSuggestions} from './suggestions-ui.js?v=3.23.0';
+import {mergeAthletica} from './athletica.js?v=3.23.0';
 const $=id=>document.getElementById(id); let activeId=localStorage.getItem('hybridActiveAccount')||null; let KEY=activeId?'hybridAccount:'+activeId:'hybridTrackerV2'; let cloud=null;
 const message=s=>$('message').textContent=s;
 let db,legacy=null,blocked=false;
@@ -15,7 +16,7 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.22.1 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.23.0 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && (!!cycle(selected,db.start)||!!db.days[selected]?.tasks?.length);}
 const activityKinds=[
@@ -27,15 +28,33 @@ const activityKinds=[
  ['recovery','Recovery / sport',/recovery|mobility|basketball/i,'M12 21s-9-6-9-12a5 5 0 0 1 9-3a5 5 0 0 1 9 3c0 6-9 12-9 12']
 ];
 function activityIcon(t){const k=activityKinds.find(k=>k[2].test(t.n))||['other','Other workout',null,'M5 12l5 5L20 7'];return {kind:k[0],svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${k[3]}"/></svg>`};}
-function calendar(){
- $('month').textContent=format(month,{month:'long',year:'numeric'});const begin=addDays(month,-weekday(month));const next=new Date(month+'T12:00:00');next.setMonth(next.getMonth()+1);const count=Math.ceil((weekday(month)+new Date(next.getFullYear(),next.getMonth(),0).getDate())/7)*7;let html='';
+// Calendar tab shows 1, 2, 6 or 12 months ending at `month`, newest first like the Reporting tab.
+// 1–2 months use the full cells with activity icons; 6 and 12 use compact status-only cells.
+const CAL_SPANS=[1,2,6,12];let calSpan=1;try{const v=+localStorage.getItem('hybridCalSpan');if(CAL_SPANS.includes(v))calSpan=v;}catch{}
+function monthGrid(m,rich){
+ const begin=addDays(m,-weekday(m));const nx=new Date(m+'T12:00:00');nx.setMonth(nx.getMonth()+1);const count=Math.ceil((weekday(m)+new Date(nx.getFullYear(),nx.getMonth(),0).getDate())/7)*7;let html='';
  for(let i=0;i<count;i++){
- const d=addDays(begin,i),tasks=plan(d,db.start,db.days,resolveLongDay(db,d)),r=db.days[d],s=status(r,tasks,d),symbol={complete:'✓',partial:'◐',missed:'✕',empty:''}[s];
+ const d=addDays(begin,i),outside=d.slice(0,7)!==m.slice(0,7);
+ if(!rich&&outside){if(d<m)html+='<span class="pcal-pad"></span>';continue;}
+ const tasks=plan(d,db.start,db.days,resolveLongDay(db,d)),r=db.days[d],s=status(r,tasks,d),symbol={complete:'✓',partial:'◐',missed:'✕',empty:''}[s];
  const descriptions=tasks.map(t=>`${t.n}${t.optional?' (optional)':''}: ${d<=today()&&r?.done?.[t.id]?'complete':'not completed'}`);
+ if(!rich){html+=`<button class="pcal-day cal-mini ${s} ${d===selected?'selected':''} ${d===today()?'today':''}" data-date="${d}" aria-pressed="${d===selected}" ${d>today()?'disabled':''} aria-label="${esc(format(d,{dateStyle:'full'})+': '+s)}" title="${esc(d+': '+s)}">${Number(d.slice(8))}<small aria-hidden="true">${symbol}</small></button>`;continue;}
  const icons=tasks.map(t=>{const icon=activityIcon(t),done=d<=today()&&r?.done?.[t.id];return `<span class="activity-icon ${icon.kind} ${done?'activity-done':''} ${t.optional?'activity-optional':''}" title="${esc(t.n+(t.optional?' (optional)':'')+(done?' · Complete':' · Planned'))}">${icon.svg}</span>`;}).join('');
- html+=`<button class="day ${d.slice(0,7)!==month.slice(0,7)?'outside':''} ${d===selected?'selected':''} ${d===today()?'today':''}" data-date="${d}" aria-pressed="${d===selected}" aria-label="${esc(format(d,{dateStyle:'full'})+': '+s+'. '+descriptions.join('; '))}"><span class="day-heading"><span>${Number(d.slice(8))}</span><span class="symbol ${s}" aria-hidden="true">${symbol}</span></span><span class="day-activities">${icons}</span></button>`;
+ html+=`<button class="day ${outside?'outside':''} ${d===selected?'selected':''} ${d===today()?'today':''}" data-date="${d}" aria-pressed="${d===selected}" aria-label="${esc(format(d,{dateStyle:'full'})+': '+s+'. '+descriptions.join('; '))}"><span class="day-heading"><span>${Number(d.slice(8))}</span><span class="symbol ${s}" aria-hidden="true">${symbol}</span></span><span class="day-activities">${icons}</span></button>`;
  }
- $('calendar').innerHTML=html;$('calendar').querySelectorAll('button').forEach(b=>b.onclick=()=>{selected=b.dataset.date;render();showView('day');$('date').focus();});
+ return html;
+}
+function calendar(){
+ const months=[];for(let i=0;i<calSpan;i++)months.push(shiftMonths(month,-i));
+ const rich=calSpan<=2,short=m=>format(m,{month:'short',year:'2-digit'});
+ $('month').textContent=calSpan===1?format(month,{month:'long',year:'numeric'}):`${short(month)} – ${short(months[months.length-1])}`;
+ $('prev').setAttribute('aria-label',calSpan===1?'Previous month':`Previous ${calSpan} months`);$('next').setAttribute('aria-label',calSpan===1?'Next month':`Next ${calSpan} months`);
+ $('cal-span').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.span===calSpan)));
+ document.querySelector('.calendar-panel>.weekdays').hidden=calSpan!==1;
+ $('calendar').className=calSpan===1?'calendar':rich?'calendar cal-multi cal-rich':'calendar cal-multi cal-compact';
+ const wk='<div class="weekdays" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>';
+ $('calendar').innerHTML=calSpan===1?monthGrid(month,true):months.map(m=>`<div class="cal-month"><h5>${esc(format(m,{month:'long',year:'numeric'}))}</h5>${rich?wk:''}<div class="${rich?'calendar':'pcal-grid'}">${monthGrid(m,rich)}</div></div>`).join('');
+ $('calendar').querySelectorAll('button[data-date]').forEach(b=>b.onclick=()=>{selected=b.dataset.date;month=selected.slice(0,7)+'-01';render();showView('day');$('date').focus();});
 }
 function showView(view){document.querySelector('.calendar-panel').hidden=view!=='calendar';document.querySelector('.detail').hidden=view!=='day';document.querySelector('.layout').hidden=!(view==='day'||view==='calendar');const report=$('report-panel');if(report)report.hidden=view!=='report';if(view==='report')refreshReport();const utilities=document.querySelector('.utilities');if(utilities)utilities.hidden=view!=='utilities';document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));}
 function label(t){if(/^Cold plunge/i.test(t.n))return 'Cold plunge';if(/^Lift [ABC]/.test(t.n))return 'Full-body lifting'+(cycle(selected,db.start)?.week===4?' · Deload':'');return t.n.split(' — ')[0];}
@@ -60,7 +79,7 @@ function render(){
 }
 function plungeFields(t,r,disabled){const sessions=r.plunges?.[t.id]||[];const fieldsets=sessions.map((s,i)=>`<fieldset class="plunge-session"><legend>Session ${i+1}</legend><div class="plunge-grid">${[['minutes','Minutes','number','min="0" max="1440" step="1"'],['seconds','Seconds','number','min="0" max="59" step="1"'],['temperature','Temperature (°F)','number','step="any"'],['time','Time of day (optional)','time','']].map(([key,name,type,attrs])=>`<label>${name}<input type="${type}" ${attrs} data-plunge="${esc(t.id)}" data-session="${i}" data-field="${key}" value="${esc(key==='temperature'&&s.unit==='C'&&s[key]!==''&&s[key]!=null?+(Number(s[key])*9/5+32).toFixed(2):s[key]??'')}" ${disabled}></label>`).join('')}</div><button data-remove-plunge="${esc(t.id)}" data-index="${i}" ${disabled}>Delete session</button></fieldset>`).join('');const details=sessions.length?`<details class="plunge-details"><summary>${sessions.length} session${sessions.length===1?'':'s'} logged</summary>${fieldsets}</details>`:'';return details+`<button data-add-session="${esc(t.id)}" ${disabled}>Add another session</button>`;}
 function migration(){const el=$('migration');el.hidden=!legacy||db.migrationResolved||blocked;if(el.hidden)return;el.innerHTML='<h2>Your V1 history is preserved</h2><p>V1 saved week/day labels without dates. You can assign those entries to the first four weeks beginning '+esc(db.start)+'. Single weight/reps entries stay labeled as V1 values, because their individual sets are unknown.</p><div class="actions"><button id="migrate">Place V1 logs in first cycle</button><button id="keep">Keep V1 as backup only</button></div>';$('migrate').onclick=()=>{if(!confirm('Assign V1 entries to the first cycle starting '+db.start+'? Existing V2 dates will take priority.'))return;db.days={...migrate(legacy,db.start),...db.days};db.legacySource=legacy;db.migrationResolved=true;save();render();};$('keep').onclick=()=>{db.legacySource=legacy;db.migrationResolved=true;save();render();};}
-$('prev').onclick=()=>{month=addDays(month,-1).slice(0,7)+'-01';calendar();};$('next').onclick=()=>{month=addDays(month,32).slice(0,7)+'-01';calendar();};$('today').onclick=()=>{selected=today();month=selected.slice(0,7)+'-01';render();showView('day');};
+$('prev').onclick=()=>{month=shiftMonths(month,-calSpan);calendar();};$('next').onclick=()=>{month=shiftMonths(month,calSpan);calendar();};$('cal-span').querySelectorAll('button').forEach(b=>b.onclick=()=>{calSpan=+b.dataset.span;try{localStorage.setItem('hybridCalSpan',String(calSpan));}catch{}calendar();});$('today').onclick=()=>{selected=today();month=selected.slice(0,7)+'-01';render();showView('day');};
 $('day-prev').onclick=()=>{selected=addDays(selected,-1);month=selected.slice(0,7)+'-01';render();$('date').focus();};$('day-next').onclick=()=>{selected=addDays(selected,1);month=selected.slice(0,7)+'-01';render();$('date').focus();};
 $('notes').oninput=e=>{if(editable()){rec().notes=e.target.value;save();}};
 
