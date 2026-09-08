@@ -1,12 +1,12 @@
-import {deletePlunge,removeActivity} from './deletion.js?v=3.20.0';
-import {mountPlunge} from './plunge-ui.js?v=3.20.0';
+import {deletePlunge,removeActivity} from './deletion.js?v=3.20.1';
+import {mountPlunge} from './plunge-ui.js?v=3.20.1';
 let refreshPlunge=()=>{},refreshReport=()=>{};
-import {connectCloud} from './cloud.js?v=3.20.0';
-import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay,weekSaturday} from './core.js?v=3.20.0';
-import {isExercise} from './wellness.js?v=3.20.0';
-import {mountReporting} from './reporting-ui.js?v=3.20.0';
-import {mountSuggestions} from './suggestions-ui.js?v=3.20.0';
-import {mergeAthletica} from './athletica.js?v=3.20.0';
+import {connectCloud} from './cloud.js?v=3.20.1';
+import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay} from './core.js?v=3.20.1';
+import {isExercise} from './wellness.js?v=3.20.1';
+import {mountReporting} from './reporting-ui.js?v=3.20.1';
+import {mountSuggestions} from './suggestions-ui.js?v=3.20.1';
+import {mergeAthletica} from './athletica.js?v=3.20.1';
 const $=id=>document.getElementById(id); let activeId=localStorage.getItem('hybridActiveAccount')||null; let KEY=activeId?'hybridAccount:'+activeId:'hybridTrackerV2'; let cloud=null;
 const message=s=>$('message').textContent=s;
 let db,legacy=null,blocked=false;
@@ -15,7 +15,7 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.20.0 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.20.1 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && (!!cycle(selected,db.start)||!!db.days[selected]?.tasks?.length);}
 const activityKinds=[
@@ -43,7 +43,7 @@ function render(){
  calendar();$('start').value=db.start;$('long-day').value=db.longDay||'Sat';
  const c=cycle(selected,db.start),effLongDay=resolveLongDay(db,selected),tasks=plan(selected,db.start,db.days,effLongDay),r=db.days[selected]||{done:{}};
  const disabled=editable()?'':'disabled';
- $('week-long-day').value=db.longDayOverrides?.[weekSaturday(selected)]||'';$('week-long-day').disabled=blocked||!c;
+
  $('cycle').textContent=c?.partial?'STARTER WEEK':c?`CYCLE ${c.number} / WEEK ${c.week} · ${['Base','Tempo','VO₂max','Deload'][c.week-1]}`:'BEFORE YOUR CYCLE';
  $('date').textContent=format(selected,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
  $('progress').textContent=!c?'Your program begins '+db.start:selected>today()?'Upcoming workout · logging opens on this date.':r.missed?'Marked missed.':`${tasks.filter(t=>!t.optional&&r.done?.[t.id]).length} / ${tasks.filter(t=>!t.optional).length} required workouts completed`;
@@ -66,7 +66,7 @@ $('notes').oninput=e=>{if(editable()){rec().notes=e.target.value;save();}};
 
 $('start').onchange=e=>{const s=e.target.value;if(!validDate(s)){message('Choose a valid start date.');e.target.value=db.start;return;}if(Object.keys(db.days).length && !confirm('Change the cycle start? Logs stay on their original dates, but the scheduled cycle weeks will change. Export a backup first if needed.')){e.target.value=db.start;return;}db.start=s;message(weekday(s)?'Starter week added. Your full Week 1 begins the following Monday.':'');save();render();};
 $('long-day').onchange=e=>{const v=e.target.value;if(v!=='Sat'&&v!=='Sun')return;if(Object.keys(db.days).length && !confirm('Change the default long-workout day to '+(v==='Sat'?'Saturday':'Sunday')+'? This is the fallback for weeks without their own override below; logged history stays on its original dates, but unlogged weekend days may show different scheduled content going forward.')){e.target.value=db.longDay||'Sat';return;}db.longDay=v;save();render();};
-$('week-long-day').onchange=e=>{const v=e.target.value;if(v!=='' && v!=='Sat' && v!=='Sun')return;const key=weekSaturday(selected);db.longDayOverrides||={};if(v)db.longDayOverrides[key]=v;else delete db.longDayOverrides[key];save();render();};
+
 function download(data,name){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 $('export').onclick=()=>{if(blocked){const raw={};try{for(const key of [KEY,'hybridTrackerV1'])raw[key]=localStorage.getItem(key);}catch(e){message('Browser storage is unavailable.');}download(raw,'hybrid-storage-recovery.json');}else download(db,'hybrid-training-v2-'+today()+'.json');};$('import').onclick=()=>$('file').click();$('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(f.size>10000000)throw Error('Backup is too large.');const incoming=validateBackup(JSON.parse(await f.text()));if(!confirm('Replace this device’s V2 history with the backup? A copy of the current history will download first.'))return;download(db,'hybrid-before-restore-'+today()+'.json');localStorage.setItem(KEY,JSON.stringify(incoming));db=incoming;blocked=false;save();message('Backup restored.');render();}catch(err){message('Restore failed: '+err.message);}finally{e.target.value='';}};
 window.addEventListener('storage',e=>{if(e.key===KEY||e.key==='hybridActiveAccount'){blocked=true;message('Your history changed in another tab. Reload this page before logging more workouts.');render();}});
@@ -92,7 +92,8 @@ $('edit-cancel').onclick=()=>$('workout-editor').close();
 $('edit-form').onsubmit=e=>{e.preventDefault();if(blocked||editingDate!==selected)return;const name=$('edit-name').value.trim();if(!name){$('edit-error').textContent='Enter a workout type.';return;}const r=rec();r.tasks||=structuredClone(plan(selected,db.start,db.days,resolveLongDay(db,selected))).map(t=>({...t,ex:t.ex||[]}));if(editingId){const t=r.tasks.find(t=>t.id===editingId);t.n=name;t.optional=$('edit-optional').checked;}else r.tasks.push({id:'custom-'+crypto.randomUUID(),n:name,lift:false,optional:$('edit-optional').checked,ex:[]});save();$('workout-editor').close();render();};
 
 let logId=null,logDate=null;
-function openActivityLog(id,t){logId=id;logDate=selected;const existing=rec().sessions?.[id];const total=Math.round((+existing?.minutes||0)*60);$('log-activity-name').textContent=label(t);$('log-hours').value=Math.floor(total/3600);$('log-minutes').value=Math.floor(total%3600/60);$('log-seconds').value=total%60;$('log-activity-error').textContent='';$('log-activity').showModal();}
+function openActivityLog(id,t){logId=id;logDate=selected;const existing=rec().sessions?.[id];const total=Math.round((+existing?.minutes||0)*60);$('log-activity-name').textContent=label(t);$('log-hours').value=total?Math.floor(total/3600):'';$('log-minutes').value=total?Math.floor(total%3600/60):'';$('log-seconds').value=total?total%60:'';$('log-activity-error').textContent='';$('log-activity').showModal();$('log-hours').focus();}
+['log-hours','log-minutes','log-seconds'].forEach(id=>$(id).onfocus=e=>e.target.select());
 $('log-activity-cancel').onclick=()=>$('log-activity').close();
 $('log-activity-form').onsubmit=e=>{e.preventDefault();if(blocked||logDate!==selected){$('log-activity-error').textContent='This date changed. Close and try again.';return;}const parts=['log-hours','log-minutes','log-seconds'].map(id=>$(id).value===''?0:+$(id).value);if(parts.some(v=>!Number.isInteger(v)||v<0)||parts[1]>59||parts[2]>59){$('log-activity-error').textContent='Enter a valid time (minutes and seconds 0–59).';return;}const total=parts[0]*3600+parts[1]*60+parts[2];const r=rec();r.sessions||={};r.sessions[logId]={minutes:+(total/60).toFixed(4)};r.done[logId]=true;r.missed=false;save();$('log-activity').close();render();};
 $('start-tomorrow').onclick=()=>{if(blocked)return;$('start').value=addDays(today(),1);$('start').dispatchEvent(new Event('change'));selected=$('start').value;month=selected.slice(0,7)+'-01';render();showView('day');};
