@@ -13,3 +13,4 @@ dialog{max-width:620px;width:calc(100% - 24px);max-height:90vh;overflow:auto;bor
 
 .workout-row{flex-wrap:wrap}.workout-row .task-label{min-width:55%}.workout-row button{margin:0}button[data-remove-activity],button[data-remove-plunge],button[data-delete-date]{color:#a52634}
 .task-detail{margin:2px 0 0 35px}.hms-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.hms-grid label{min-width:0}
+.report-section{margin:18px 0 10px;font-size:1.05rem;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#1b5975}.report-section+.kind-filter{margin-top:0}.kind-filter{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}.kind-filter button{flex:1 1 90px;min-height:40px;padding:6px 10px;font-weight:600}.kind-filter [aria-pressed=true]{background:#142033;color:white;border-color:#142033}

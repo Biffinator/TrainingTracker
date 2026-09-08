@@ -1,7 +1,8 @@
-import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS,sixMonthSpan,shiftMonths,isCurrentSixMonth} from './reporting.js?v=3.20.1';
-import {sessions,statistics,duration} from './plunge.js?v=3.20.1';
-import {deletePlunge} from './deletion.js?v=3.20.1';
-import {weekday} from './core.js?v=3.20.1';
+import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS,sixMonthSpan,shiftMonths,isCurrentSixMonth} from './reporting.js?v=3.21.0';
+import {sessions,statistics,duration} from './plunge.js?v=3.21.0';
+import {deletePlunge} from './deletion.js?v=3.21.0';
+import {weekday} from './core.js?v=3.21.0';
+import {KINDS} from './wellness.js?v=3.21.0';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const hms=m=>{const t=Math.round(m*60),h=Math.floor(t/3600),mm=Math.floor(t%3600/60),ss=t%60;return (h?h+':'+String(mm).padStart(2,'0'):String(mm))+':'+String(ss).padStart(2,'0');};
 const monthLabel=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
@@ -13,10 +14,13 @@ export function mountReporting(h){
  let box=document.getElementById('report-panel');
  if(!box){
   box=document.createElement('section');box.id='report-panel';box.className='card';box.hidden=true;box.setAttribute('aria-label','Training reports');
-  box.innerHTML=`<h2>Reporting</h2><label>Period<select id="report-period">${PERIODS.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select></label><div class="bar" id="report-nav" hidden><button id="report-prev" aria-label="Previous period">←</button><h3 id="report-range-label"></h3><button id="report-next" aria-label="Next period">→</button></div><button id="report-today-btn" hidden>Back to current</button><p id="report-range" class="muted"></p><div class="plunge-stats" id="report-stats"></div><p class="muted">Actual time comes from checking workouts complete on the Day view. Unlogged sessions are not counted as zero.</p><hr><h3>Cold plunge</h3><div class="bar" id="pcal-nav"><button id="pcal-prev" aria-label="Previous 6 months">←</button><h4 id="pcal-range-label"></h4><button id="pcal-next" aria-label="Next 6 months">→</button></div><div class="plunge-stats" id="report-plunge-stats"></div><div class="pcal-months" id="pcal-months"></div><div id="pcal-detail"></div>`;
+  box.innerHTML=`<h2>Reporting</h2><h3 class="report-section">Fitness</h3><div class="kind-filter" id="report-kind" role="group" aria-label="Workout type">${KINDS.map(([v,t])=>`<button type="button" data-kind="${v}" aria-pressed="${v==='all'}">${esc(t)}</button>`).join('')}</div><label>Period<select id="report-period">${PERIODS.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select></label><div class="bar" id="report-nav" hidden><button id="report-prev" aria-label="Previous period">←</button><h3 id="report-range-label"></h3><button id="report-next" aria-label="Next period">→</button></div><button id="report-today-btn" hidden>Back to current</button><p id="report-range" class="muted"></p><div class="plunge-stats" id="report-stats"></div><p class="muted">Actual time comes from checking workouts complete on the Day view. Unlogged sessions are not counted as zero.</p><hr><h3 class="report-section">Cold plunge</h3><div class="bar" id="pcal-nav"><button id="pcal-prev" aria-label="Previous 6 months">←</button><h4 id="pcal-range-label"></h4><button id="pcal-next" aria-label="Next 6 months">→</button></div><div class="plunge-stats" id="report-plunge-stats"></div><div class="pcal-months" id="pcal-months"></div><div id="pcal-detail"></div>`;
   document.querySelector('.layout').after(box);
   let saved=null;try{saved=localStorage.getItem('hybridReportPeriod');}catch{}
   if(saved&&PERIODS.some(p=>p[0]===saved))box.querySelector('#report-period').value=saved;
+  let kind='all';try{const k=localStorage.getItem('hybridReportKind');if(KINDS.some(p=>p[0]===k))kind=k;}catch{}
+  box.dataset.kind=kind;
+  box.querySelectorAll('#report-kind button').forEach(b=>b.onclick=()=>{box.dataset.kind=b.dataset.kind;try{localStorage.setItem('hybridReportKind',b.dataset.kind);}catch{}refresh();});
   box.querySelector('#report-period').onchange=e=>{try{localStorage.setItem('hybridReportPeriod',e.target.value);}catch{}refresh();};
   box.querySelector('#report-prev').onclick=()=>{anchor=shiftAnchor($('#report-period').value,anchor,-1);refresh();};
   box.querySelector('#report-next').onclick=()=>{anchor=shiftAnchor($('#report-period').value,anchor,1);refresh();};
@@ -51,16 +55,17 @@ export function mountReporting(h){
    $('#report-range-label').textContent=period==='week'?`${start} – ${end}`:monthLabel(start);
   }
   $('#report-range').textContent=start+' to '+end;
-  const s=rangeSummary(db,start,end);
+  const kind=box.dataset.kind||'all';$('#report-kind').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.kind===kind)));
+  const s=rangeSummary(db,start,end,kind);
   $('#report-stats').innerHTML=`<div><small>Workouts done</small><strong>${s.completed} / ${s.planned}</strong></div><div><small>Actual time</small><strong>${s.logged?hms(s.minutes):'—'}</strong></div>`;
   const months=sixMonthSpan(calAnchor);
-  $('#pcal-range-label').textContent=`${monthShort(months[0])} – ${monthShort(calAnchor)}`;
+  $('#pcal-range-label').textContent=`${monthShort(calAnchor)} – ${monthShort(months[0])}`;
   $('#pcal-next').disabled=isCurrentSixMonth(calAnchor,today);
   const calStart=months[0],calEnd=periodRange('month',calAnchor,today).end;
   const plungeRows=sessions(db).filter(r=>r.date>=calStart&&r.date<=calEnd),unit='F',stats=statistics(plungeRows,unit);
   $('#report-plunge-stats').innerHTML=`<div><small>Sessions</small><strong>${stats.count}</strong></div><div><small>Total time</small><strong>${duration(stats.total)}</strong></div><div><small>Average temperature</small><strong>${stats.temperature===null?'—':stats.temperature.toFixed(1)+'°'+unit}</strong></div>`;
   const byDate={};plungeRows.forEach(r=>byDate[r.date]=(byDate[r.date]||0)+r.total);
-  $('#pcal-months').innerHTML=months.map(m=>renderMonth(m,byDate,today)).join('');
+  $('#pcal-months').innerHTML=months.slice().reverse().map(m=>renderMonth(m,byDate,today)).join('');
   $('#pcal-months').querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>selectDay(b.dataset.date));
   if(selectedDay){
    const rows=sessions(db).filter(r=>r.date===selectedDay);

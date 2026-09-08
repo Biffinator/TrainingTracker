@@ -1,5 +1,5 @@
-import {addDays} from './core.js?v=3.20.1';
-import {daySummary} from './wellness.js?v=3.20.1';
+import {addDays} from './core.js?v=3.21.0';
+import {daySummary,kindFilter} from './wellness.js?v=3.21.0';
 export const PERIODS=[['week','This week'],['month','This month'],['3m','Last 3 months'],['6m','Last 6 months'],['year','Last 12 months'],['ytd','Year to date']];
 export const NAVIGABLE=new Set(['week','month']);
 export function shiftMonths(monthStart,delta){const d=new Date(monthStart.slice(0,7)+'-01T12:00:00');d.setMonth(d.getMonth()+delta);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;}
@@ -23,10 +23,10 @@ export function isCurrentPeriod(period,anchor,today){
 }
 export function sixMonthSpan(anchorMonth){const months=[];for(let i=5;i>=0;i--)months.push(shiftMonths(anchorMonth,-i));return months;}
 export function isCurrentSixMonth(anchorMonth,today){return anchorMonth.slice(0,7)===today.slice(0,7);}
-export function rangeSummary(db,start,end){
- let planned=0,completed=0,minutes=0,cardio=0,logged=0;
+export function rangeSummary(db,start,end,kind='all'){
+ const keep=kindFilter(kind);let planned=0,completed=0,minutes=0,cardio=0,logged=0;
  for(let d=start;d<=end;d=addDays(d,1)){
-  const s=daySummary(db,d);
+  const s=daySummary(db,d,keep);
   planned+=s.planned;completed+=s.completed;minutes+=s.minutes;cardio+=s.cardio;logged+=s.logged;
  }
  return {planned,completed,minutes,cardio,logged};
