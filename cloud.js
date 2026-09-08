@@ -1,8 +1,8 @@
-import {createIdleSync} from './idle-sync.js?v=3.19.1';
-import {createSessionStore,SESSION_KEY} from './session.js?v=3.19.1';
-import {request,decision,changed,URL,PUBLIC_KEY} from './cloud-api.js?v=3.19.1';
-import {parseIcs} from './athletica.js?v=3.19.1';
-import {validateBackup} from './core.js?v=3.19.1';
+import {createIdleSync} from './idle-sync.js?v=3.19.2';
+import {createSessionStore,SESSION_KEY} from './session.js?v=3.19.2';
+import {request,decision,changed,URL,PUBLIC_KEY} from './cloud-api.js?v=3.19.2';
+import {parseIcs} from './athletica.js?v=3.19.2';
+import {validateBackup} from './core.js?v=3.19.2';
 export function connectCloud(hooks){
  const $=id=>document.getElementById(id);let session=null,meta=null,busy=false,epoch=0,conflict=null,timer;
  const idle=createIdleSync(()=>sync());
@@ -68,7 +68,7 @@ export function connectCloud(hooks){
   if(!session||!hooks.available()||!hooks.athletica)return;
   const last=hooks.get()?.athletica?.fetchedAt;
   if(!force&&last&&Date.now()-Date.parse(last)<30*60*1000)return;
-  try{const access=await token();const res=await fetch(URL+'/functions/v1/athletica',{headers:{apikey:PUBLIC_KEY,Authorization:'Bearer '+access},cache:'no-store',signal:AbortSignal.timeout(20000)});if(!res.ok)throw Error(res.status===404?'relay not deployed yet':'relay error '+res.status);hooks.athletica(parseIcs(await res.text()));}
+  try{const access=await token();const res=await fetch(URL+'/functions/v1/athletica',{headers:{apikey:PUBLIC_KEY,Authorization:'Bearer '+access},cache:'no-store',signal:AbortSignal.timeout(20000)});if(!res.ok){const detail=(await res.text().catch(()=>'')).trim().slice(0,120);throw Error(res.status===404?'relay not deployed yet':'relay error '+res.status+(detail?' · '+detail:''));}hooks.athletica(parseIcs(await res.text()));}
   catch(e){hooks.athletica(null,e.message);}
  }
  return {dirty,athletica:syncAthletica};
