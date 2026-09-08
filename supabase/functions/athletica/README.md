@@ -4,21 +4,25 @@ Fetches the signed-in user's Athletica calendar feed server-side (the feed sends
 
 ## One-time deploy
 
-1. Install the Supabase CLI and sign in (this opens a browser; nothing else needs your password):
+The CLI runs via `npx` (no install; its npm package refuses global installs). Run these from the repo root.
+
+1. Sign in — this opens a browser for you to log in; nothing else needs your password:
    ```bash
-   npm install -g supabase
-   supabase login
+   npx supabase@latest login
    ```
-2. From the repo root, link the project and set the two secrets. Get the feed URL from Athletica → Settings → Profile → Plan Settings. `ALLOWED_ORIGINS` is where the app is served from (comma-separate several).
+2. Initialise the local project config once (creates `supabase/config.toml`; answer N to any editor-settings prompt), then link this project. `link` may ask for the database password — leave it blank and press Enter, it isn't needed for functions:
    ```bash
-   supabase link --project-ref cgfddevbwgcvnenwzvfn
-   supabase secrets set ATHLETICA_ICS_URL="https://app.athletica.ai/<token>/athletica.ics" ALLOWED_ORIGINS="https://biffinator.github.io"
+   npx supabase@latest init
+   npx supabase@latest link --project-ref cgfddevbwgcvnenwzvfn
    ```
-3. Deploy (JWT verification stays on, so only a signed-in user of this project can call it):
+3. Set the two secrets. Get the feed URL from Athletica → Settings → Profile → Plan Settings. `ALLOWED_ORIGINS` is where the app is served from (comma-separate several):
    ```bash
-   supabase functions deploy athletica
+   npx supabase@latest secrets set ATHLETICA_ICS_URL="https://app.athletica.ai/<token>/athletica.ics" ALLOWED_ORIGINS="https://biffinator.github.io"
    ```
-   If the CLI asks to create `supabase/config.toml`, accept — it's the default project config.
+4. Deploy (JWT verification stays on, so only a signed-in user of this project can call it):
+   ```bash
+   npx supabase@latest functions deploy athletica
+   ```
 
 Redeploy after editing `index.ts`; `supabase secrets set` again if you rotate the feed token.
 
