@@ -1,4 +1,4 @@
-import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.19.0';
+import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.19.1';
 // Athletica publishes a per-user iCalendar feed (Settings → Profile → Plan Settings) of all-day
 // events named "<Sport> - <Workout name>" whose DESCRIPTION carries a "Duration: H:MM:SS|MM:SS" line.
 export const SYNC_DAYS=7;
@@ -26,6 +26,10 @@ export function parseIcs(text){
 }
 export const isCardio=e=>!/strength|conditioning/i.test(e.sport);
 export const isAthleticaTask=t=>String(t?.id||'').startsWith('ath-');
+// Program slots that an Athletica cardio session stands in for: the generic Tue/Thu "Endurance"
+// placeholder and the long-day "Long run"/"Long bike" slot. Everything else (Cold plunge, lifts,
+// the optional HIIT Cycle, treadmill days) is left alone.
+export const isPlaceholder=t=>{const n=String(t?.n||'');return n==='Endurance'||/^Long (run|bike)\b/i.test(n);};
 export function athleticaTask(e){
  const detail=[e.sport,e.minutes!=null?e.minutes+' min':null].filter(Boolean).join(' · ');
  const ex=e.description.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,30).map(s=>s.slice(0,500));
@@ -44,7 +48,7 @@ export function mergeAthletica(db,events,today,days=SYNC_DAYS){
  for(const d of dates){
   const current=plan(d,db.start,db.days,resolveLongDay(db,d)).map(t=>({...t,ex:t.ex||[]}));
   const incoming=(byDate[d]||[]).map(athleticaTask);
-  const next=[...current.filter(t=>!isAthleticaTask(t)&&!(incoming.length&&t.n==='Endurance')),...incoming];
+  const next=[...current.filter(t=>!isAthleticaTask(t)&&!(incoming.length&&isPlaceholder(t))),...incoming];
   if(!next.length||JSON.stringify(next)===JSON.stringify(current))continue;
   validateTasks(next);
   (db.days[d]||=(db.days[d]={done:{},notes:'',missed:false,sets:{}})).tasks=next;changed++;
