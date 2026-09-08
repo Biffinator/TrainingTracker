@@ -1,4 +1,4 @@
-import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.23.1';
+import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.24.0';
 // Athletica publishes a per-user iCalendar feed (Settings → Profile → Plan Settings) of all-day
 // events named "<Sport> - <Workout name>" whose DESCRIPTION carries a "Duration: H:MM:SS|MM:SS" line.
 export const SYNC_DAYS=7;
@@ -26,10 +26,11 @@ export function parseIcs(text){
 }
 export const isCardio=e=>!/strength|conditioning/i.test(e.sport);
 export const isAthleticaTask=t=>String(t?.id||'').startsWith('ath-');
-// Program slots that an Athletica cardio session stands in for: the generic Tue/Thu "Endurance"
-// placeholder and the long-day "Long run"/"Long bike" slot. Everything else (Cold plunge, lifts,
-// the optional HIIT Cycle, treadmill days) is left alone.
+// Program slots an Athletica session stands in for. Cardio takes the generic Tue/Thu "Endurance"
+// placeholder and the long-day "Long run"/"Long bike" slot; strength takes the day's Lift A/B/C.
+// Everything else (Cold plunge, the optional HIIT Cycle, treadmill days) is left alone.
 export const isPlaceholder=t=>{const n=String(t?.n||'');return n==='Endurance'||/^Long (run|bike)\b/i.test(n);};
+export const isProgramLift=t=>!!t?.lift&&!isAthleticaTask(t);
 // Athletica regenerates every UID on each feed build (they are uniqid() timestamps), so ids are
 // derived from what identifies a session to a person: its date, sport and name. Duplicates get -2, -3…
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,80);
@@ -38,7 +39,7 @@ const sessionKey=t=>String(t.n).split(' · ')[0];
 export function athleticaTask(e,seen){
  const detail=[e.sport,e.minutes!=null?e.minutes+' min':null].filter(Boolean).join(' · ');
  const ex=e.description.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,30).map(s=>s.slice(0,500));
- return {id:stableId(e,seen),n:(e.name+(detail?' — '+detail:'')).slice(0,500),lift:false,optional:false,ex};
+ return {id:stableId(e,seen),n:(e.name+(detail?' — '+detail:'')).slice(0,500),lift:!isCardio(e),optional:false,ex};
 }
 // A synced row whose id changed (older UID-based ids, or a renamed duplicate) hands its checkmark and
 // logged time to the incoming row with the same name and sport, so a re-sync never un-completes a workout.
@@ -58,7 +59,7 @@ function carryOver(rec,current,incoming){
 // Completion state survives re-syncs because ids are stable per Athletica event.
 export function mergeAthletica(db,events,today,days=SYNC_DAYS){
  const start=today,end=addDays(today,days-1),byDate={};
- for(const e of events){if(e.date<start||e.date>end||!isCardio(e))continue;(byDate[e.date]||=[]).push(e);}
+ for(const e of events){if(e.date<start||e.date>end)continue;(byDate[e.date]||=[]).push(e);}
  const dates=new Set(Object.keys(byDate));
  for(const [d,r] of Object.entries(db.days||{}))if(d>=start&&d<=end&&r?.tasks?.some(isAthleticaTask))dates.add(d);
  let changed=0;
@@ -66,7 +67,8 @@ export function mergeAthletica(db,events,today,days=SYNC_DAYS){
   const current=plan(d,db.start,db.days,resolveLongDay(db,d)).map(t=>({...t,ex:t.ex||[]}));
   const seen=new Set(),incoming=(byDate[d]||[]).map(e=>athleticaTask(e,seen));
   carryOver(db.days[d],current,incoming);
-  const next=[...current.filter(t=>!isAthleticaTask(t)&&!(incoming.length&&isPlaceholder(t))),...incoming];
+  const cardio=incoming.some(t=>!t.lift),strength=incoming.some(t=>t.lift);
+  const next=[...current.filter(t=>!isAthleticaTask(t)&&!(cardio&&isPlaceholder(t))&&!(strength&&isProgramLift(t))),...incoming];
   if(!next.length||JSON.stringify(next)===JSON.stringify(current))continue;
   validateTasks(next);
   (db.days[d]||=(db.days[d]={done:{},notes:'',missed:false,sets:{}})).tasks=next;changed++;

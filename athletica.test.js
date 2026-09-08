@@ -19,10 +19,10 @@ test('parses folded, escaped all-day events with both duration formats',()=>{
  assert.equal(ev[4].minutes,90);   // 1:30:00
  assert.match(ev[0].description,/reps, keep quality\n\nDuration/); // \, and \n unescaped
 });
-test('merge replaces the Endurance placeholder, adds two sessions, ignores strength, keeps Cold plunge',()=>{
+test('merge replaces the Endurance placeholder, adds two sessions, keeps Cold plunge',()=>{
  const db=fresh(),events=parseIcs(ICS);
  assert.equal(mergeAthletica(db,events,'2026-09-08'),2); // 09-08 and 09-12 are inside the 7-day window
- assert.equal(db.days['2026-09-07'],undefined); // yesterday: strength only, and outside the window anyway
+ assert.equal(db.days['2026-09-07'],undefined); // yesterday: outside the window
  assert.equal(db.days['2026-09-15'],undefined); // today+7: beyond the window, not pinned yet
  const tue=plan('2026-09-08',db.start,db.days,'Sat');
  assert.deepEqual(tue.map(t=>t.n),['Cold plunge','Aerobic Development — Bike · 45 min','Aerobic Development — Run · 20 min']);
@@ -81,6 +81,26 @@ test('rows saved under the old UID-based ids migrate their completion on the nex
  assert.equal(r.done['ath-2026-09-08-run-aerobic-development'],true);
  assert.deepEqual(r.sessions,{'ath-2026-09-08-run-aerobic-development':{minutes:20}});
  assert.ok(!r.tasks.some(t=>t.id.startsWith('ath-6aa')));
+});
+test('a strength session replaces the day\'s Lift A/B/C and is flagged as a lift',()=>{
+ const db=fresh();
+ const before=plan('2026-09-07',db.start,db.days,'Sat');
+ assert.ok(before.some(t=>t.lift&&/^Lift [ABC]/.test(t.n)),'Monday carries a program lift');
+ assert.equal(mergeAthletica(db,parseIcs(ICS),'2026-09-07'),3); // 09-07, 09-08, 09-12
+ const mon=plan('2026-09-07',db.start,db.days,'Sat');
+ assert.ok(!mon.some(t=>/^Lift [ABC]/.test(t.n)),'program lift replaced');
+ const s=mon.find(isAthleticaTask);
+ assert.equal(s.n,'Stength & conditioning — Strength and conditioning · 60 min');
+ assert.equal(s.lift,true);
+ assert.equal(s.id,'ath-2026-09-07-strength-and-conditioning-stength-conditioning');
+ assert.equal(mon[0].n,'Cold plunge');
+ assert.ok(mon.some(t=>/treadmill/i.test(t.n)),'treadmill day untouched');
+});
+test('days without an Athletica strength session keep the program lift',()=>{
+ const db=fresh();
+ mergeAthletica(db,parseIcs(ICS),'2026-09-07');
+ const wed=plan('2026-09-09',db.start,db.days,'Sat');
+ assert.ok(wed.some(t=>/^Lift [ABC]/.test(t.n)));
 });
 test('past days with older synced sessions are left untouched',()=>{
  const db=fresh();

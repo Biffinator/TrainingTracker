@@ -1,5 +1,5 @@
-import {plan,addDays,cycle,validateTasks,replaceTask,resolveLongDay} from './core.js?v=3.23.1';
-import {HIIT_CYCLE} from './program.js?v=3.23.1';
+import {plan,addDays,cycle,validateTasks,replaceTask,resolveLongDay} from './core.js?v=3.24.0';
+import {HIIT_CYCLE} from './program.js?v=3.24.0';
 export function workload(db,date,replace=''){
  const demanding=t=>t.lift||/long run|long bike|tempo|4×4|basketball/i.test(t.n);
  const today=plan(date,db.start,db.days,resolveLongDay(db,date)).filter(t=>t.id!==replace);
