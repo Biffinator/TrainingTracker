@@ -1,8 +1,8 @@
-import {createIdleSync} from './idle-sync.js?v=3.24.0';
-import {createSessionStore,SESSION_KEY} from './session.js?v=3.24.0';
-import {request,decision,changed,URL,PUBLIC_KEY} from './cloud-api.js?v=3.24.0';
-import {parseIcs} from './athletica.js?v=3.24.0';
-import {validateBackup} from './core.js?v=3.24.0';
+import {createIdleSync} from './idle-sync.js?v=3.25.0';
+import {createSessionStore,SESSION_KEY} from './session.js?v=3.25.0';
+import {request,decision,changed,URL,PUBLIC_KEY} from './cloud-api.js?v=3.25.0';
+import {parseIcs} from './athletica.js?v=3.25.0';
+import {validateBackup} from './core.js?v=3.25.0';
 export function connectCloud(hooks){
  const $=id=>document.getElementById(id);let session=null,meta=null,busy=false,epoch=0,conflict=null,timer;
  const idle=createIdleSync(()=>sync());
@@ -50,7 +50,7 @@ export function connectCloud(hooks){
   const cached=localStorage.getItem(metaKey());meta=cached?JSON.parse(cached):{revision:0,dirty:false};
   if(!Number.isSafeInteger(meta.revision)||meta.revision<0)throw Error('Invalid local sync information.');
   hooks.account(session.user.id);remember=$('cloud-remember').checked;sessionStore.write(session,remember);ui();state('Signed in. Loading your history…');
- }catch(e){session=null;state('Sign-in failed: '+e.message);}finally{$('cloud-password').value='';busy=false;$('cloud-signin').disabled=false;}if(session){sync();syncAthletica();}};
+ }catch(e){session=null;state('Sign-in failed: '+e.message);}finally{$('cloud-password').value='';busy=false;$('cloud-signin').disabled=false;}if(session){sync();syncAthletica();syncStrava();}};
  $('cloud-sync').onclick=()=>sync(true);
  $('cloud-disconnect').onclick=()=>{if(busy){state('Wait for the current sync to finish.');return;}epoch++;clearTimeout(timer);idle.cancel();const old=session;sessionStore.clear();session=null;conflict=null;meta=null;$('cloud-conflict').hidden=true;hooks.account(null);ui();state('Disconnected. Cloud-account history remains stored locally on this device.');if(old)request('/auth/v1/logout?scope=local',{method:'POST',token:old.access_token}).catch(()=>{});};
  $('cloud-copies').onclick=()=>{hooks.download({local:hooks.get(),cloud:conflict?.payload},'tracker-conflict-copies.json');};
@@ -58,10 +58,10 @@ export function connectCloud(hooks){
  $('cloud-use-local').onclick=()=>{if(!conflict||busy)return;if(!confirm('Replace the cloud history with this device’s history? Both copies will download first.'))return;hooks.download({local:hooks.get(),cloud:conflict.payload},'tracker-before-conflict-resolution.json');meta={revision:conflict.revision,dirty:true};persist();conflict=null;$('cloud-conflict').hidden=true;sync();};
  window.addEventListener('online',()=>sync());window.addEventListener('focus',()=>sync());
  document.addEventListener('input',e=>{if(session&&e.target.matches('#wellness input,#wellness textarea,#wellness select,#tasks input,#tasks select,#notes,#start,#edit-form input,#edit-form textarea,#edit-form select'))idle.touch();});
- document.addEventListener('keydown',e=>{if(session&&e.target.matches('#wellness input,#wellness textarea,#wellness select,#tasks input,#tasks select,#notes,#start,#edit-form input,#edit-form textarea'))idle.touch();});setInterval(()=>{if(!document.hidden){sync();syncAthletica();}},30000);
+ document.addEventListener('keydown',e=>{if(session&&e.target.matches('#wellness input,#wellness textarea,#wellness select,#tasks input,#tasks select,#notes,#start,#edit-form input,#edit-form textarea'))idle.touch();});setInterval(()=>{if(!document.hidden){sync();syncAthletica();syncStrava();}},30000);
  window.addEventListener('storage',e=>{if(e.key===SESSION_KEY&&!e.newValue&&session){epoch++;session=null;clearTimeout(timer);idle.cancel();ui();state('Signed out in another tab. Local history is preserved.');}});
  ui();state('Local mode · sign in to share history across devices.');
- try{const saved=sessionStore.read();if(saved){session=saved.session;remember=saved.remember;const cached=localStorage.getItem(metaKey());meta=cached?JSON.parse(cached):{revision:0,dirty:false};if(!Number.isSafeInteger(meta.revision)||meta.revision<0)throw Error('Invalid sync information');hooks.account(session.user.id);ui();state('Restoring your cloud session…');setTimeout(()=>{sync();syncAthletica();},0);}}catch(e){session=null;sessionStore.clear();ui();state('Please sign in again. Your local history is preserved.');}
+ try{const saved=sessionStore.read();if(saved){session=saved.session;remember=saved.remember;const cached=localStorage.getItem(metaKey());meta=cached?JSON.parse(cached):{revision:0,dirty:false};if(!Number.isSafeInteger(meta.revision)||meta.revision<0)throw Error('Invalid sync information');hooks.account(session.user.id);ui();state('Restoring your cloud session…');setTimeout(()=>{sync();syncAthletica();syncStrava();},0);}}catch(e){session=null;sessionStore.clear();ui();state('Please sign in again. Your local history is preserved.');}
  // Athletica's feed sends no CORS headers, so it's fetched through the project's Edge Function relay
  // (supabase/functions/athletica). Self-throttled to the feed's 30-minute refresh interval.
  async function syncAthletica(force=false){
@@ -71,6 +71,22 @@ export function connectCloud(hooks){
   try{const access=await token();const res=await fetch(URL+'/functions/v1/athletica',{headers:{apikey:PUBLIC_KEY,Authorization:'Bearer '+access},cache:'no-store',signal:AbortSignal.timeout(20000)});if(!res.ok){const detail=(await res.text().catch(()=>'')).trim().slice(0,120);throw Error(res.status===404?'relay not deployed yet':'relay error '+res.status+(detail?' · '+detail:''));}hooks.athletica(parseIcs(await res.text()));}
   catch(e){hooks.athletica(null,e.message);}
  }
- return {dirty,athletica:syncAthletica};
+ // Strava: OAuth tokens live server-side (supabase/functions/strava); the browser only ever sees activity
+ // summaries for the last 8 days. Self-throttled like Athletica; `force` is used by Sync now and after connecting.
+ async function stravaCall(action,body={}){
+  const access=await token();
+  const res=await fetch(URL+'/functions/v1/strava',{method:'POST',headers:{apikey:PUBLIC_KEY,Authorization:'Bearer '+access,'Content-Type':'application/json'},body:JSON.stringify({action,...body}),cache:'no-store',signal:AbortSignal.timeout(20000)});
+  const text=await res.text();let data=null;try{data=text?JSON.parse(text):null;}catch{}
+  if(!res.ok){if(res.status===404)throw Error('relay not deployed yet');const detail=String(data?.error||text||'').trim().slice(0,120);throw Error('relay error '+res.status+(detail?' · '+detail:''));}
+  return data||{};
+ }
+ async function syncStrava(force=false){
+  if(!session||!hooks.available()||!hooks.strava)return;
+  const last=hooks.get()?.strava?.fetchedAt;
+  if(!force&&last&&Date.now()-Date.parse(last)<30*60*1000)return;
+  try{const before=Math.floor(Date.now()/1000),after=before-8*86400;hooks.strava(await stravaCall('activities',{after,before}));}
+  catch(e){hooks.strava(null,e.message);}
+ }
+ return {dirty,athletica:syncAthletica,strava:{sync:syncStrava,authorize:()=>stravaCall('authorize'),disconnect:()=>stravaCall('disconnect')}};
 }
 

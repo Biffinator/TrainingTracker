@@ -1,4 +1,4 @@
-import {plan,resolveLongDay} from './core.js?v=3.24.0';
+import {plan,resolveLongDay} from './core.js?v=3.25.0';
 export const isExercise=t=>!/^cold plunge/i.test(t.n);
 // Same buckets the calendar icons use; 'strength' also catches lifts added by name.
 export const workoutKind=t=>t.lift||/lift|strength|body|kettlebell/i.test(t.n)?'strength':/bike|cycl/i.test(t.n)?'bike':/run|tempo|vo₂|vo2/i.test(t.n)?'run':'other';

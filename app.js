@@ -1,13 +1,14 @@
-import {deletePlunge,removeActivity} from './deletion.js?v=3.24.0';
-import {mountPlunge} from './plunge-ui.js?v=3.24.0';
+import {deletePlunge,removeActivity} from './deletion.js?v=3.25.0';
+import {mountPlunge} from './plunge-ui.js?v=3.25.0';
 let refreshPlunge=()=>{},refreshReport=()=>{};
-import {connectCloud} from './cloud.js?v=3.24.0';
-import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay} from './core.js?v=3.24.0';
-import {isExercise} from './wellness.js?v=3.24.0';
-import {mountReporting} from './reporting-ui.js?v=3.24.0';
-import {shiftMonths} from './reporting.js?v=3.24.0';
-import {mountSuggestions} from './suggestions-ui.js?v=3.24.0';
-import {mergeAthletica} from './athletica.js?v=3.24.0';
+import {connectCloud} from './cloud.js?v=3.25.0';
+import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay} from './core.js?v=3.25.0';
+import {isExercise} from './wellness.js?v=3.25.0';
+import {mountReporting} from './reporting-ui.js?v=3.25.0';
+import {shiftMonths} from './reporting.js?v=3.25.0';
+import {mountSuggestions} from './suggestions-ui.js?v=3.25.0';
+import {mergeAthletica} from './athletica.js?v=3.25.0';
+import {applyStrava} from './strava.js?v=3.25.0';
 const $=id=>document.getElementById(id); let activeId=localStorage.getItem('hybridActiveAccount')||null; let KEY=activeId?'hybridAccount:'+activeId:'hybridTrackerV2'; let cloud=null;
 const message=s=>$('message').textContent=s;
 let db,legacy=null,blocked=false;
@@ -16,7 +17,7 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.24.0 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.25.0 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && (!!cycle(selected,db.start)||!!db.days[selected]?.tasks?.length);}
 const activityKinds=[
@@ -75,7 +76,7 @@ function render(){
  $('tasks').querySelectorAll('[data-add-session]').forEach(b=>b.onclick=()=>{if(!editable())return;const r=rec();r.plunges||={};r.plunges[b.dataset.addSession]||=[{}];r.plunges[b.dataset.addSession].push({});save();render();});
  $('tasks').querySelectorAll('[data-remove-plunge]').forEach(b=>b.onclick=()=>{if(!editable()||!confirm('Delete this cold-plunge session? If this is the last session, its completion check will clear.'))return;if(deletePlunge(rec(),b.dataset.removePlunge,Number(b.dataset.index))){save();render();}});
  $('tasks').querySelectorAll('[data-remove-activity]').forEach(b=>b.onclick=()=>{if(blocked||!confirm('Remove this activity and its recorded sessions from this date? The recurring program on other dates will stay unchanged.'))return;removeActivity(rec(),plan(selected,db.start,db.days,resolveLongDay(db,selected)),b.dataset.removeActivity);save();render();});
- migration();refreshPlunge();athleticaStatus();
+ migration();refreshPlunge();athleticaStatus();stravaStatus();
 }
 function plungeFields(t,r,disabled){const sessions=r.plunges?.[t.id]||[];const fieldsets=sessions.map((s,i)=>`<fieldset class="plunge-session"><legend>Session ${i+1}</legend><div class="plunge-grid">${[['minutes','Minutes','number','min="0" max="1440" step="1"'],['seconds','Seconds','number','min="0" max="59" step="1"'],['temperature','Temperature (°F)','number','step="any"'],['time','Time of day (optional)','time','']].map(([key,name,type,attrs])=>`<label>${name}<input type="${type}" ${attrs} data-plunge="${esc(t.id)}" data-session="${i}" data-field="${key}" value="${esc(key==='temperature'&&s.unit==='C'&&s[key]!==''&&s[key]!=null?+(Number(s[key])*9/5+32).toFixed(2):s[key]??'')}" ${disabled}></label>`).join('')}</div><button data-remove-plunge="${esc(t.id)}" data-index="${i}" ${disabled}>Delete session</button></fieldset>`).join('');const details=sessions.length?`<details class="plunge-details"><summary>${sessions.length} session${sessions.length===1?'':'s'} logged</summary>${fieldsets}</details>`:'';return details+`<button data-add-session="${esc(t.id)}" ${disabled}>Add another session</button>`;}
 function migration(){const el=$('migration');el.hidden=!legacy||db.migrationResolved||blocked;if(el.hidden)return;el.innerHTML='<h2>Your V1 history is preserved</h2><p>V1 saved week/day labels without dates. You can assign those entries to the first four weeks beginning '+esc(db.start)+'. Single weight/reps entries stay labeled as V1 values, because their individual sets are unknown.</p><div class="actions"><button id="migrate">Place V1 logs in first cycle</button><button id="keep">Keep V1 as backup only</button></div>';$('migrate').onclick=()=>{if(!confirm('Assign V1 entries to the first cycle starting '+db.start+'? Existing V2 dates will take priority.'))return;db.days={...migrate(legacy,db.start),...db.days};db.legacySource=legacy;db.migrationResolved=true;save();render();};$('keep').onclick=()=>{db.legacySource=legacy;db.migrationResolved=true;save();render();};}
@@ -99,10 +100,17 @@ cloud=connectCloud({
  account:id=>{const nextKey=id?'hybridAccount:'+id:'hybridTrackerV2';const raw=localStorage.getItem(nextKey);let next;try{next=raw?validateBackup(JSON.parse(raw)):{version:2,start:db.start,days:{},migrationResolved:true};}catch(e){next={version:2,start:db.start,days:{},migrationResolved:true};if(id)try{const metaKey='hybridCloudMeta:'+id;const m=JSON.parse(localStorage.getItem(metaKey)||'{"revision":0}');localStorage.setItem(metaKey,JSON.stringify({...m,dirty:false}));}catch{}message('Local cache for this account could not be read and was reset. Syncing your history from the cloud.');}KEY=nextKey;activeId=id;if(id)localStorage.setItem('hybridActiveAccount',id);else localStorage.removeItem('hybridActiveAccount');db=next;blocked=false;render();},
  legacy:()=>{const raw=localStorage.getItem('hybridTrackerV2');return raw?JSON.parse(raw):null;},
  download,
- athletica:(events,error)=>{if(error){athleticaStatus('Athletica sync failed · '+error);return;}if(blocked)return;mergeAthletica(db,events,today());db.athletica={fetchedAt:new Date().toISOString(),events:events.length};save();render();}
+ athletica:(events,error)=>{if(error){athleticaStatus('Athletica sync failed · '+error);return;}if(blocked)return;mergeAthletica(db,events,today());db.athletica={fetchedAt:new Date().toISOString(),events:events.length};save();render();},
+ strava:(data,error)=>{if(error){stravaStatus('Strava sync failed · '+error);return;}if(blocked)return;if(!data.connected){const was=db.strava?.connected;db.strava={connected:false};save();stravaStatus(data.revoked&&was?'Strava access was revoked. Connect again to resume.':'');return;}const applied=applyStrava(db,data.activities||[],today());db.strava={connected:true,athlete:String(data.athlete?.name||''),fetchedAt:new Date().toISOString(),applied,activities:(data.activities||[]).length};save();render();}
 });
 function athleticaStatus(text){const el=$('athletica-status'),btn=$('athletica-sync');if(!el)return;btn.disabled=!activeId||blocked;const a=db.athletica;el.textContent=text||(a?.fetchedAt?`Synced ${a.events} planned workout${a.events===1?'':'s'} · ${new Date(a.fetchedAt).toLocaleString()}`:(activeId?'Not synced yet.':'Sign in to sync your Athletica plan.'));}
 $('athletica-sync').onclick=()=>{if(!cloud||!activeId)return;athleticaStatus('Syncing Athletica…');cloud.athletica(true);};
+function stravaStatus(text){const el=$('strava-status');if(!el)return;const s=db.strava||{},connected=!!s.connected,ready=!!activeId&&!blocked;$('strava-connect').hidden=connected;$('strava-connect').disabled=!ready;$('strava-sync').hidden=!connected;$('strava-sync').disabled=!ready;$('strava-disconnect').hidden=!connected;$('strava-disconnect').disabled=!ready;el.textContent=text||(!activeId?'Sign in to connect Strava.':!connected?'Not connected.':`Connected${s.athlete?' as '+s.athlete:''} · ${s.applied} of ${s.activities} recent activit${s.activities===1?'y':'ies'} matched · ${new Date(s.fetchedAt).toLocaleString()}`);}
+$('strava-connect').onclick=()=>{if(!cloud||!activeId)return;stravaStatus('Opening Strava…');cloud.strava.authorize().then(r=>{if(!r?.url)throw Error('no authorize URL');location.assign(r.url);}).catch(e=>stravaStatus('Could not start Strava sign-in · '+e.message));};
+$('strava-sync').onclick=()=>{if(!cloud||!activeId)return;stravaStatus('Syncing Strava…');cloud.strava.sync(true);};
+$('strava-disconnect').onclick=()=>{if(!cloud||!activeId||!confirm('Disconnect Strava? Times already filled in stay; future activities stop syncing.'))return;stravaStatus('Disconnecting…');cloud.strava.disconnect().then(()=>{db.strava={connected:false};save();stravaStatus();}).catch(e=>stravaStatus('Disconnect failed · '+e.message));};
+// Strava's OAuth redirect lands back here with ?strava=connected|error.
+{const q=new URLSearchParams(location.search);if(q.has('strava')){const v=q.get('strava'),reason=q.get('reason');history.replaceState(null,'',location.pathname);if(v==='connected'){message('Strava connected. Syncing your recent activities…');showView('utilities');stravaStatus('Syncing Strava…');cloud?.strava.sync(true);}else message('Strava connection failed'+(reason?': '+reason:'.'));}}
 
 let editingId=null,editingDate=null;
 function openEditor(id=null){if(blocked)return;const t=plan(selected,db.start,db.days,resolveLongDay(db,selected)).find(t=>t.id===id);editingId=id;editingDate=selected;$('edit-name').value=t?label(t):'';$('edit-optional').checked=t?.optional??true;$('edit-heading').textContent=id?'Edit workout':'Add a workout';$('edit-error').textContent='';$('workout-editor').showModal();}
