@@ -1,5 +1,5 @@
-import {addDays} from './core.js?v=3.19.2';
-import {daySummary} from './wellness.js?v=3.19.2';
+import {addDays} from './core.js?v=3.20.0';
+import {daySummary} from './wellness.js?v=3.20.0';
 export const PERIODS=[['week','This week'],['month','This month'],['3m','Last 3 months'],['6m','Last 6 months'],['year','Last 12 months'],['ytd','Year to date']];
 export const NAVIGABLE=new Set(['week','month']);
 export function shiftMonths(monthStart,delta){const d=new Date(monthStart.slice(0,7)+'-01T12:00:00');d.setMonth(d.getMonth()+delta);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;}

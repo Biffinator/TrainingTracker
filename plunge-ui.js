@@ -1,5 +1,4 @@
-import {plan,resolveLongDay} from './core.js?v=3.19.2';
-import {clockState,duration} from './plunge.js?v=3.19.2';
+import {clockState,duration} from './plunge.js?v=3.20.0';
 export function mountPlunge(h){
  const $=id=>document.getElementById(id);
  const key=()=> 'hybridPlungeTimer:'+h.account();let run=null,wake=null,countdownEnd=null,pendingSetup=null,goalToneDone=false,audioCtx=null,mediaDest=null,alarmVideo=null;
@@ -50,16 +49,7 @@ export function mountPlunge(h){
  function refresh(){
  document.querySelectorAll('[data-add-session]').forEach(b=>{
   if(!b.parentElement.querySelector('[data-open-plunge]')){const timer=document.createElement('button');timer.dataset.openPlunge=b.dataset.addSession;timer.className='primary';timer.textContent='Start / resume plunge timer';timer.disabled=h.blocked()||h.date()!==h.today();timer.onclick=()=>open(b.dataset.addSession);b.before(timer);}
-  if(!b.parentElement.querySelector('[data-manual-plunge]')){const manualBtn=document.createElement('button');manualBtn.dataset.manualPlunge=b.dataset.addSession;manualBtn.textContent='Add past session';manualBtn.disabled=h.blocked();manualBtn.onclick=()=>openManual();b.before(manualBtn);}
  });
  }
- const manual=document.createElement('dialog');manual.id='manual-plunge-dialog';manual.innerHTML=`<form id="manual-plunge-form"><h2>Add past plunge</h2><label>Date<input id="manual-date" type="date" required></label><label>Time<input id="manual-time" type="time" required></label><label>Temperature (°F)<input id="manual-temp" type="number" step="any" inputmode="decimal" required></label><div class="plunge-grid"><label>Minutes<input id="manual-min" type="number" min="0" max="1440" step="1" required></label><label>Seconds<input id="manual-sec" type="number" min="0" max="59" step="1" value="0" required></label></div><p id="manual-error" role="status"></p><button class="primary" type="submit">Save session</button><button id="manual-cancel" type="button">Cancel</button></form>`;document.body.append(manual);
- function openManual(){if(h.blocked())return;$('manual-date').value=h.date()<=h.today()?h.date():h.today();$('manual-date').max=h.today();$('manual-error').textContent='';manual.showModal();}
- $('manual-cancel').onclick=()=>manual.close();
- $('manual-plunge-form').onsubmit=e=>{e.preventDefault();if(h.blocked())return;const date=$('manual-date').value,minutes=$('manual-min').value,seconds=$('manual-sec').value,time=$('manual-time').value,temperature=$('manual-temp').value;if(date>h.today()||+minutes*60+ +seconds<=0){$('manual-error').textContent='Choose a past date or today and a duration longer than zero.';return;}
- const db=h.db();const r=db.days[date]||{done:{},notes:'',missed:false,sets:{}};const tasks=plan(date,db.start,db.days,resolveLongDay(db,date));let task=tasks.find(t=>/^Cold plunge/i.test(t.n));if(!task){task={id:'plunge-'+crypto.randomUUID(),n:'Cold plunge',lift:false,optional:false,ex:[]};r.tasks=[...structuredClone(tasks).map(t=>({...t,ex:t.ex||[]})),task];}
- const existing=Object.values(r.plunges||{}).flat().some(s=>s&&s.time===time&&Number(s.minutes||0)*60+Number(s.seconds||0)===+minutes*60+ +seconds&&Number(s.unit==='C'?Number(s.temperature)*9/5+32:s.temperature)===+temperature);if(existing){$('manual-error').textContent='A matching session already exists for this date.';return;}
- r.plunges||={};r.plunges[task.id]||=[];r.plunges[task.id].push({id:crypto.randomUUID(),minutes,seconds,time,temperature,unit:'F'});r.done[task.id]=true;r.missed=false;db.days[date]=r;if(h.save()){manual.close();h.refresh();}else $('manual-error').textContent='Could not save. Export a backup to keep this entry.';
- };
  refresh();return refresh;
 }
