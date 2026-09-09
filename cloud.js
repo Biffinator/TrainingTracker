@@ -1,8 +1,8 @@
-import {createIdleSync} from './idle-sync.js?v=3.26.3';
-import {createSessionStore,SESSION_KEY} from './session.js?v=3.26.3';
-import {request,decision,changed,URL,PUBLIC_KEY} from './cloud-api.js?v=3.26.3';
-import {parseIcs} from './athletica.js?v=3.26.3';
-import {validateBackup} from './core.js?v=3.26.3';
+import {createIdleSync} from './idle-sync.js?v=3.27.0';
+import {createSessionStore,SESSION_KEY} from './session.js?v=3.27.0';
+import {request,decision,changed,URL,PUBLIC_KEY} from './cloud-api.js?v=3.27.0';
+import {parseIcs} from './athletica.js?v=3.27.0';
+import {validateBackup} from './core.js?v=3.27.0';
 export function connectCloud(hooks){
  const $=id=>document.getElementById(id);let session=null,meta=null,busy=false,epoch=0,conflict=null,timer;
  const idle=createIdleSync(()=>sync());

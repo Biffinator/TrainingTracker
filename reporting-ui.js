@@ -1,8 +1,8 @@
-import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS,sixMonthSpan,shiftMonths,isCurrentSixMonth,timeSeries,plungeStreak,weekStreak} from './reporting.js?v=3.26.3';
-import {sessions,statistics,duration} from './plunge.js?v=3.26.3';
-import {deletePlunge} from './deletion.js?v=3.26.3';
-import {weekday} from './core.js?v=3.26.3';
-import {KINDS} from './wellness.js?v=3.26.3';
+import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS,sixMonthSpan,shiftMonths,isCurrentSixMonth,timeSeries,plungeStreak,weekStreak} from './reporting.js?v=3.27.0';
+import {sessions,statistics,duration} from './plunge.js?v=3.27.0';
+import {deletePlunge} from './deletion.js?v=3.27.0';
+import {weekday} from './core.js?v=3.27.0';
+import {KINDS} from './wellness.js?v=3.27.0';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const hms=m=>{const t=Math.round(m*60),h=Math.floor(t/3600),mm=Math.floor(t%3600/60),ss=t%60;return (h?h+':'+String(mm).padStart(2,'0'):String(mm))+':'+String(ss).padStart(2,'0');};
 const monthLabel=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
@@ -18,7 +18,7 @@ export function mountReporting(h){
  let box=document.getElementById('report-panel');
  if(!box){
   box=document.createElement('section');box.id='report-panel';box.className='card';box.hidden=true;box.setAttribute('aria-label','Training reports');
-  box.innerHTML=`<h2>Reporting</h2><h3 class="report-section">Fitness</h3><div class="kind-filter" id="report-kind" role="group" aria-label="Workout type">${KINDS.map(([v,t])=>`<button type="button" data-kind="${v}" aria-pressed="${v==='all'}">${esc(t)}</button>`).join('')}</div><div class="bar" id="report-nav"><button id="report-prev" aria-label="Previous period">←</button><select id="report-period" aria-label="Period">${PERIODS.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select><button id="report-next" aria-label="Next period">→</button></div><p id="report-range" class="muted"></p><button id="report-today-btn" hidden>Back to current</button><div class="plunge-stats" id="report-stats"></div><div class="breakdown" id="report-breakdown"></div><div class="bars" id="report-chart"></div><div class="bar-labels" id="report-chart-labels"></div><div class="breakdown" id="report-legend"></div><p class="muted">Counts are required workouts (optional ones like HIIT Cycle add time but not count). Actual time comes from checking workouts complete on the Day view; unlogged sessions are not counted as zero. A full week means every required workout was checked.</p><hr><h3 class="report-section">Cold plunge</h3><div class="bar" id="pcal-nav"><button id="pcal-prev" aria-label="Previous 6 months">←</button><h4 id="pcal-range-label"></h4><button id="pcal-next" aria-label="Next 6 months">→</button></div><div class="plunge-stats" id="report-plunge-stats"></div><button id="pcal-toggle" type="button">Show 6 months</button><div class="pcal-months collapsed" id="pcal-months"></div><div id="pcal-detail"></div>`;
+  box.innerHTML=`<h2>Reporting</h2><h3 class="report-section">Fitness</h3><div class="kind-filter" id="report-kind" role="group" aria-label="Workout type">${KINDS.map(([v,t])=>`<button type="button" data-kind="${v}" aria-pressed="${v==='all'}">${esc(t)}</button>`).join('')}</div><div class="bar" id="report-nav"><button id="report-prev" aria-label="Previous period">←</button><select id="report-period" aria-label="Period">${PERIODS.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select><button id="report-next" aria-label="Next period">→</button></div><p id="report-range" class="muted"></p><button id="report-today-btn" hidden>Back to current</button><div class="plunge-stats" id="report-stats"></div><div class="breakdown" id="report-breakdown"></div><div class="bars" id="report-chart"></div><div class="bar-labels" id="report-chart-labels"></div><div class="breakdown" id="report-legend"></div><p class="muted">Counts are required workouts (optional ones like HIIT Cycle add time but not count). Actual time comes from checking workouts complete on the Day view; unlogged sessions are not counted as zero. A full week means every required workout was checked.</p><hr><h3 class="report-section">Cold plunge</h3><div class="bar" id="pcal-nav"><button id="pcal-prev" aria-label="Previous 6 months">←</button><h4 id="pcal-range-label"></h4><button id="pcal-next" aria-label="Next 6 months">→</button></div><div class="plunge-stats" id="report-plunge-stats"></div><button id="pcal-toggle" type="button">Show 6 months</button><div class="pcal-months collapsed" id="pcal-months"></div>`;
   document.querySelector('.layout').after(box);
   let saved=null;try{saved=localStorage.getItem('hybridReportPeriod');}catch{}
   if(saved&&PERIODS.some(p=>p[0]===saved))box.querySelector('#report-period').value=saved;
@@ -34,7 +34,7 @@ export function mountReporting(h){
   box.querySelector('#pcal-toggle').onclick=()=>{collapsed=!collapsed;refresh();};
  }
  const $=id=>box.querySelector(id.startsWith('#')?id:'#'+id);
- function renderMonth(monthStart,byDate,today){
+ function renderMonth(monthStart,byDate,today,db){
   const wd=weekday(monthStart);
   const daysInMonth=new Date(shiftMonths(monthStart,1)+'T12:00:00');daysInMonth.setDate(0);
   const days=daysInMonth.getDate();
@@ -47,8 +47,16 @@ export function mountReporting(h){
    const future=d>today;
    cells+=`<button type="button" class="pcal-day ${tier} ${d===today?'today':''} ${d===selectedDay?'selected':''}" data-date="${d}" ${future?'disabled':''} title="${esc(d)}${mins?': '+mins+' min':''}">${day}<small>${mins?mins+'m':''}</small></button>`;
   }
-  return `<div class="pcal-month"><h5>${esc(monthLabel(monthStart))}</h5><div class="pcal-grid">${cells}</div></div>`;
+  // The tapped day's sessions pop in right under this month's grid, so nothing is a scroll away.
+  let pop='';
+  if(selectedDay&&selectedDay.slice(0,7)===monthStart.slice(0,7)){
+   const rows=sessions(db).filter(r=>r.date===selectedDay),label=new Date(selectedDay+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+   const item=r=>`<span class="pcal-pop-row">${duration(r.total)}${r.temperature!==''&&r.temperature!=null?' · '+esc(r.unit==='C'?+(Number(r.temperature)*9/5+32).toFixed(1):r.temperature)+'°F':''}${r.time?' · '+esc(fmtTime(r.time)):''} <button type="button" data-delete-date="${esc(r.date)}" data-delete-task="${esc(r.task)}" data-delete-index="${r.index}" ${h.blocked()?'disabled':''} aria-label="Delete this session">Delete</button></span>`;
+   pop=`<div class="pcal-pop"><b>${esc(label)}</b>${rows.length?rows.map(item).join(''):'<span class="muted">No plunge logged.</span>'}</div>`;
+  }
+  return `<div class="pcal-month"><h5>${esc(monthLabel(monthStart))}</h5><div class="pcal-grid">${cells}</div>${pop}</div>`;
  }
+ const fmtTime=t=>{const [hh,mm]=String(t).split(':');const h24=+hh;if(!Number.isFinite(h24))return t;return `${h24%12||12}:${mm} ${h24<12?'AM':'PM'}`;};
  function renderChart(series){
   const max=Math.max(0,...series.map(b=>b.total));
   $('#report-chart').classList.toggle('bars-empty',!max);
@@ -62,7 +70,7 @@ export function mountReporting(h){
   const used=KIND_ORDER.filter(k=>series.some(b=>b.byKind[k]));
   $('#report-legend').innerHTML=used.map(k=>`<span><span class="dot k-${k}"></span>${KIND_NAME[k]}</span>`).join('');
  }
- function selectDay(d){selectedDay=d;refresh();}
+ function selectDay(d){selectedDay=selectedDay===d?null:d;refresh();}
  function refresh(){
   const db=h.db(),today=h.today(),period=$('#report-period').value,navigable=NAVIGABLE.has(period);
   const {start,end}=periodRange(period,navigable?anchor:today,today);
@@ -87,15 +95,9 @@ export function mountReporting(h){
   const byDate={};plungeRows.forEach(r=>byDate[r.date]=(byDate[r.date]||0)+r.total);
   $('#pcal-months').classList.toggle('collapsed',collapsed);
   $('#pcal-toggle').textContent=collapsed?'Show 6 months':'Show 2 months';
-  $('#pcal-months').innerHTML=months.slice().reverse().map(m=>renderMonth(m,byDate,today)).join('');
+  $('#pcal-months').innerHTML=months.slice().reverse().map(m=>renderMonth(m,byDate,today,db)).join('');
   $('#pcal-months').querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>selectDay(b.dataset.date));
-  if(selectedDay){
-   const rows=sessions(db).filter(r=>r.date===selectedDay);
-   $('#pcal-detail').innerHTML=`<h4>${esc(selectedDay)}</h4>`+(rows.length?rows.map(r=>`<p class="plunge-feed-item">${duration(r.total)} · ${r.temperature!==''&&r.temperature!=null?esc(r.unit==='C'?+(Number(r.temperature)*9/5+32).toFixed(2):r.temperature)+'°F':'Temperature not recorded'} <button data-delete-date="${esc(r.date)}" data-delete-task="${esc(r.task)}" data-delete-index="${r.index}" ${h.blocked()?'disabled':''}>Delete</button></p>`).join(''):'<p class="muted">No sessions.</p>');
-   $('#pcal-detail').querySelectorAll('[data-delete-date]').forEach(b=>b.onclick=()=>{if(h.blocked()||!confirm('Delete this cold-plunge session? If it is the last session for this activity, its completion check will clear.'))return;const r=h.db().days[b.dataset.deleteDate];if(r&&deletePlunge(r,b.dataset.deleteTask,Number(b.dataset.deleteIndex))){h.save();h.refresh();}});
-  }else{
-   $('#pcal-detail').innerHTML='<p class="muted">Tap a day to see its sessions.</p>';
-  }
+  $('#pcal-months').querySelectorAll('[data-delete-date]').forEach(b=>b.onclick=()=>{if(h.blocked()||!confirm('Delete this cold-plunge session? If it is the last session for this activity, its completion check will clear.'))return;const r=h.db().days[b.dataset.deleteDate];if(r&&deletePlunge(r,b.dataset.deleteTask,Number(b.dataset.deleteIndex))){h.save();h.refresh();}});
  }
  refresh();
  return refresh;
