@@ -36,6 +36,6 @@ New Strava API applications start in "single athlete" mode: only the athlete who
 ## Notes
 
 - Sync runs on sign-in and every 30 minutes while the app is open; **Sync Strava now** forces it. Only activities of at least one minute inside the last 8 days are considered.
-- Matching is by day and type: Run/TrailRun/VirtualRun → run rows, any Ride type → bike rows, WeightTraining/Crossfit/Workout → the day's lift, Walk/Hike → the treadmill row. One activity fills one row. A row a user typed a time into is never overwritten.
+- Matching is by day and type: Run/TrailRun/VirtualRun → run rows, any Ride type → bike rows, WeightTraining/Crossfit/Workout → the day's lift, Walk/Hike → the treadmill row. One activity fills one row. Strava's recorded time replaces a typed time; a row stays linked to its activity while that activity exists on Strava.
 - **Disconnect** revokes the app on Strava and deletes the token row. If a user revokes from Strava's side instead, the next sync notices and clears the connection in the app.
 - Redeploy after editing `index.ts`.
