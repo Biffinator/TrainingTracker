@@ -1,4 +1,4 @@
-import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.26.1';
+import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.26.2';
 // Athletica publishes a per-user iCalendar feed (Settings → Profile → Plan Settings) of all-day
 // events named "<Sport> - <Workout name>" whose DESCRIPTION carries a "Duration: H:MM:SS|MM:SS" line.
 export const SYNC_DAYS=7;

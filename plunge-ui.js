@@ -1,4 +1,4 @@
-import {clockState,duration} from './plunge.js?v=3.26.1';
+import {clockState,duration} from './plunge.js?v=3.26.2';
 export function mountPlunge(h){
  const $=id=>document.getElementById(id);
  const key=()=> 'hybridPlungeTimer:'+h.account();let run=null,wake=null,countdownEnd=null,pendingSetup=null,goalToneDone=false,audioCtx=null,mediaDest=null,alarmVideo=null;
@@ -47,8 +47,8 @@ export function mountPlunge(h){
  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&dialog.open&&(run||countdownEnd)){tick();keepAwake();}});
  setInterval(tick,250);
  function refresh(){
- document.querySelectorAll('[data-add-session]').forEach(b=>{
-  if(!b.parentElement.querySelector('[data-open-plunge]')){const timer=document.createElement('button');timer.dataset.openPlunge=b.dataset.addSession;timer.className='primary';timer.textContent='Start / resume plunge timer';timer.disabled=h.blocked()||h.date()!==h.today();timer.onclick=()=>open(b.dataset.addSession);b.before(timer);}
+ document.querySelectorAll('[data-plunge-slot]').forEach(slot=>{
+  if(!slot.querySelector('[data-open-plunge]')){const id=slot.dataset.plungeSlot,timer=document.createElement('button');timer.dataset.openPlunge=id;timer.className='primary';timer.textContent='Start / resume plunge timer';timer.disabled=h.blocked()||h.date()!==h.today();timer.onclick=()=>open(id);slot.prepend(timer);}
  });
  }
  refresh();return refresh;

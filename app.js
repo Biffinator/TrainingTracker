@@ -1,15 +1,15 @@
-import {deletePlunge,removeActivity} from './deletion.js?v=3.26.1';
-import {mountPlunge} from './plunge-ui.js?v=3.26.1';
+import {deletePlunge,removeActivity} from './deletion.js?v=3.26.2';
+import {mountPlunge} from './plunge-ui.js?v=3.26.2';
 let refreshPlunge=()=>{},refreshReport=()=>{};
-import {connectCloud} from './cloud.js?v=3.26.1';
-import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay} from './core.js?v=3.26.1';
-import {isExercise} from './wellness.js?v=3.26.1';
-import {mountReporting} from './reporting-ui.js?v=3.26.1';
-import {shiftMonths} from './reporting.js?v=3.26.1';
-import {mountSuggestions} from './suggestions-ui.js?v=3.26.1';
-import {mergeAthletica} from './athletica.js?v=3.26.1';
-import {applyStrava} from './strava.js?v=3.26.1';
-import {sportOf} from './wellness.js?v=3.26.1';
+import {connectCloud} from './cloud.js?v=3.26.2';
+import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay} from './core.js?v=3.26.2';
+import {isExercise} from './wellness.js?v=3.26.2';
+import {mountReporting} from './reporting-ui.js?v=3.26.2';
+import {shiftMonths} from './reporting.js?v=3.26.2';
+import {mountSuggestions} from './suggestions-ui.js?v=3.26.2';
+import {mergeAthletica} from './athletica.js?v=3.26.2';
+import {applyStrava} from './strava.js?v=3.26.2';
+import {sportOf} from './wellness.js?v=3.26.2';
 const $=id=>document.getElementById(id); let activeId=localStorage.getItem('hybridActiveAccount')||null; let KEY=activeId?'hybridAccount:'+activeId:'hybridTrackerV2'; let cloud=null;
 const message=s=>$('message').textContent=s;
 let db,legacy=null,blocked=false;
@@ -18,7 +18,7 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.26.1 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.26.2 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && (!!cycle(selected,db.start)||!!db.days[selected]?.tasks?.length);}
 const activityKinds=[
@@ -72,7 +72,7 @@ function render(){
  // Unfinished rows first so the top of the list is what's left; completed rows sink, keeping their order.
  // A completed row shows its planned time next to the actual one (and where the actual came from).
  const hmsFmt=m=>{const t=Math.round(m*60),h=Math.floor(t/3600),mm=Math.floor(t%3600/60),ss=t%60;return (h?h+':'+String(mm).padStart(2,'0'):String(mm))+':'+String(ss).padStart(2,'0');};
- $('tasks').innerHTML=[...tasks].sort((a,b)=>(r.done?.[a.id]?1:0)-(r.done?.[b.id]?1:0)).map(t=>{let detail=t.n.includes(' — ')?t.n.slice(t.n.indexOf(' — ')+3):'';const s=r.sessions?.[t.id];if(r.done?.[t.id]&&s&&+s.minutes>0)detail=(detail?detail.replace(/(\d+) min\b/,'Planned $1 min')+' · ':'')+'Actual '+hmsFmt(+s.minutes)+(s.strava?' (Strava)':'');return `<div class="task${r.done?.[t.id]?' task-done':''}"><div class="workout-row"><label class="task-label"><input type="checkbox" data-task="${esc(t.id)}" ${r.done?.[t.id]?'checked':''} ${disabled}><span>${esc(label(t))}${t.optional?' <small>Optional</small>':''}</span></label><button data-edit="${esc(t.id)}" ${blocked?'disabled':''}>Edit</button><button data-remove-activity="${esc(t.id)}" ${blocked?'disabled':''}>Remove</button></div>${detail?`<p class="muted task-detail">${esc(detail)}</p>`:''}${/^Cold plunge/i.test(t.n)?plungeFields(t,r,disabled):''}</div>`;}).join('');
+ $('tasks').innerHTML=[...tasks].sort((a,b)=>(r.done?.[a.id]?1:0)-(r.done?.[b.id]?1:0)).map(t=>{let detail=t.n.includes(' — ')?t.n.slice(t.n.indexOf(' — ')+3):'';const s=r.sessions?.[t.id];if(r.done?.[t.id]&&s&&+s.minutes>0)detail=(detail?detail.replace(/(\d+) min\b/,'Planned $1 min')+' · ':'')+'Actual '+hmsFmt(+s.minutes)+(s.strava?' (Strava)':'');return `<div class="task${r.done?.[t.id]?' task-done':''}"><div class="workout-row"><label class="task-label"><input type="checkbox" data-task="${esc(t.id)}" ${r.done?.[t.id]?'checked':''} ${disabled}><span>${esc(label(t))}${t.optional?' <small>Optional</small>':''}</span></label><span class="row-actions"><button data-edit="${esc(t.id)}" ${blocked?'disabled':''}>Edit</button><button data-remove-activity="${esc(t.id)}" ${blocked?'disabled':''}>Remove</button></span></div>${detail?`<p class="muted task-detail">${esc(detail)}</p>`:''}${/^Cold plunge/i.test(t.n)?plungeFields(t,r,disabled):''}</div>`;}).join('');
  $('notes').value=r.notes||'';$('notes').disabled=!editable();
  $('tasks').querySelectorAll('[data-task]').forEach(el=>el.onchange=()=>{if(!editable())return;const id=el.dataset.task;if(el.checked){const t=tasks.find(t=>t.id===id);if(t&&isExercise(t)){el.checked=false;openActivityLog(id,t);return;}}rec().done[id]=el.checked;rec().missed=false;save();render();});
  $('tasks').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(b.dataset.edit));
@@ -82,7 +82,7 @@ function render(){
  $('tasks').querySelectorAll('[data-remove-activity]').forEach(b=>b.onclick=()=>{if(blocked||!confirm('Remove this activity and its recorded sessions from this date? The recurring program on other dates will stay unchanged.'))return;removeActivity(rec(),plan(selected,db.start,db.days,resolveLongDay(db,selected)),b.dataset.removeActivity);save();render();});
  migration();refreshPlunge();athleticaStatus();stravaStatus();
 }
-function plungeFields(t,r,disabled){const sessions=r.plunges?.[t.id]||[];const fieldsets=sessions.map((s,i)=>`<fieldset class="plunge-session"><legend>Session ${i+1}</legend><div class="plunge-grid">${[['minutes','Minutes','number','min="0" max="1440" step="1"'],['seconds','Seconds','number','min="0" max="59" step="1"'],['temperature','Temperature (°F)','number','step="any"'],['time','Time of day (optional)','time','']].map(([key,name,type,attrs])=>`<label>${name}<input type="${type}" ${attrs} data-plunge="${esc(t.id)}" data-session="${i}" data-field="${key}" value="${esc(key==='temperature'&&s.unit==='C'&&s[key]!==''&&s[key]!=null?+(Number(s[key])*9/5+32).toFixed(2):s[key]??'')}" ${disabled}></label>`).join('')}</div><button data-remove-plunge="${esc(t.id)}" data-index="${i}" ${disabled}>Delete session</button></fieldset>`).join('');const details=sessions.length?`<details class="plunge-details"><summary>${sessions.length} session${sessions.length===1?'':'s'} logged</summary>${fieldsets}</details>`:'';return details+`<button data-add-session="${esc(t.id)}" ${disabled}>Add another session</button>`;}
+function plungeFields(t,r,disabled){const sessions=r.plunges?.[t.id]||[];const fieldsets=sessions.map((s,i)=>`<fieldset class="plunge-session"><legend>Session ${i+1}</legend><div class="plunge-grid">${[['minutes','Minutes','number','min="0" max="1440" step="1"'],['seconds','Seconds','number','min="0" max="59" step="1"'],['temperature','Temperature (°F)','number','step="any"'],['time','Time of day (optional)','time','']].map(([key,name,type,attrs])=>`<label>${name}<input type="${type}" ${attrs} data-plunge="${esc(t.id)}" data-session="${i}" data-field="${key}" value="${esc(key==='temperature'&&s.unit==='C'&&s[key]!==''&&s[key]!=null?+(Number(s[key])*9/5+32).toFixed(2):s[key]??'')}" ${disabled}></label>`).join('')}</div><button data-remove-plunge="${esc(t.id)}" data-index="${i}" ${disabled}>Delete session</button></fieldset>`).join('');return `<div class="plunge-bar" data-plunge-slot="${esc(t.id)}"><details class="plunge-details"><summary>${sessions.length?`${sessions.length} session${sessions.length===1?'':'s'} logged`:'No sessions yet'}</summary>${fieldsets}<button data-add-session="${esc(t.id)}" ${disabled}>Add a session manually</button></details></div>`;}
 function migration(){const el=$('migration');el.hidden=!legacy||db.migrationResolved||blocked;if(el.hidden)return;el.innerHTML='<h2>Your V1 history is preserved</h2><p>V1 saved week/day labels without dates. You can assign those entries to the first four weeks beginning '+esc(db.start)+'. Single weight/reps entries stay labeled as V1 values, because their individual sets are unknown.</p><div class="actions"><button id="migrate">Place V1 logs in first cycle</button><button id="keep">Keep V1 as backup only</button></div>';$('migrate').onclick=()=>{if(!confirm('Assign V1 entries to the first cycle starting '+db.start+'? Existing V2 dates will take priority.'))return;db.days={...migrate(legacy,db.start),...db.days};db.legacySource=legacy;db.migrationResolved=true;save();render();};$('keep').onclick=()=>{db.legacySource=legacy;db.migrationResolved=true;save();render();};}
 $('prev').onclick=()=>{month=shiftMonths(month,-calSpan);calendar();};$('next').onclick=()=>{month=shiftMonths(month,calSpan);calendar();};$('cal-span').querySelectorAll('button').forEach(b=>b.onclick=()=>{calSpan=+b.dataset.span;try{localStorage.setItem('hybridCalSpan',String(calSpan));}catch{}calendar();});$('today').onclick=()=>{selected=today();month=selected.slice(0,7)+'-01';render();showView('day');};
 $('day-prev').onclick=()=>{selected=addDays(selected,-1);month=selected.slice(0,7)+'-01';render();$('date').focus();};$('day-next').onclick=()=>{selected=addDays(selected,1);month=selected.slice(0,7)+'-01';render();$('date').focus();};
