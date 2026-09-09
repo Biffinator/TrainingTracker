@@ -63,7 +63,7 @@ test('the sport segment decides the kind, not the workout name',()=>{
  assert.equal(workoutKind({n:'Strength Endurance — Run · 40 min',lift:false}),'run');
  assert.equal(workoutKind({n:'Stength & conditioning — Strength and conditioning · 60 min',lift:true}),'strength');
  assert.equal(workoutKind({n:'Run Prep — Bike · 30 min',lift:false}),'bike');
- assert.equal(workoutKind({n:'Treadmill — 30 min @ 3.0 mph, 13–15% incline',lift:false}),'other');
+ assert.equal(workoutKind({n:'Treadmill — 30 min @ 3.0 mph, 13–15% incline',lift:false}),'walk');
  const db=fresh();
  db.days['2026-09-10']={done:{},notes:'',missed:false,sets:{},tasks:[{id:'0',n:'Cold plunge',lift:false,optional:false,ex:[]},{id:'x',n:'Strength Endurance — Run · 40 min',lift:false,optional:false,ex:[]}]};
  assert.equal(applyStrava(db,[{id:301,sport_type:'Run',start_date_local:'2026-09-10T06:30:00Z',moving_time:2400}],'2026-09-10').applied,1);

@@ -1,14 +1,14 @@
-import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS,sixMonthSpan,shiftMonths,isCurrentSixMonth,timeSeries,plungeStreak,weekStreak} from './reporting.js?v=3.26.2';
-import {sessions,statistics,duration} from './plunge.js?v=3.26.2';
-import {deletePlunge} from './deletion.js?v=3.26.2';
-import {weekday} from './core.js?v=3.26.2';
-import {KINDS} from './wellness.js?v=3.26.2';
+import {periodRange,rangeSummary,shiftAnchor,isCurrentPeriod,NAVIGABLE,PERIODS,sixMonthSpan,shiftMonths,isCurrentSixMonth,timeSeries,plungeStreak,weekStreak} from './reporting.js?v=3.26.3';
+import {sessions,statistics,duration} from './plunge.js?v=3.26.3';
+import {deletePlunge} from './deletion.js?v=3.26.3';
+import {weekday} from './core.js?v=3.26.3';
+import {KINDS} from './wellness.js?v=3.26.3';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const hms=m=>{const t=Math.round(m*60),h=Math.floor(t/3600),mm=Math.floor(t%3600/60),ss=t%60;return (h?h+':'+String(mm).padStart(2,'0'):String(mm))+':'+String(ss).padStart(2,'0');};
 const monthLabel=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'long',year:'numeric'});
 const monthShort=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'short',year:'2-digit'});
 const dayShort=d=>new Date(d+'T12:00:00').toLocaleDateString(undefined,{month:'numeric',day:'numeric'});
-const KIND_ORDER=['strength','bike','run','other'],KIND_NAME={run:'Run',bike:'Bike',strength:'Strength',other:'Other'};
+const KIND_ORDER=['strength','bike','run','walk','other'],KIND_NAME={run:'Run',bike:'Bike',strength:'Strength',walk:'Treadmill / walk',other:'Other'};
 const rateClass=(done,total)=>!total||!done?'none':done>=total?'complete':'partial';
 const streakText=s=>`${s.current}<small class="sub">best ${s.best}</small>`;
 export function mountReporting(h){
@@ -18,7 +18,7 @@ export function mountReporting(h){
  let box=document.getElementById('report-panel');
  if(!box){
   box=document.createElement('section');box.id='report-panel';box.className='card';box.hidden=true;box.setAttribute('aria-label','Training reports');
-  box.innerHTML=`<h2>Reporting</h2><h3 class="report-section">Fitness</h3><div class="kind-filter" id="report-kind" role="group" aria-label="Workout type">${KINDS.map(([v,t])=>`<button type="button" data-kind="${v}" aria-pressed="${v==='all'}">${esc(t)}</button>`).join('')}</div><div class="bar" id="report-nav"><button id="report-prev" aria-label="Previous period">←</button><select id="report-period" aria-label="Period">${PERIODS.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select><button id="report-next" aria-label="Next period">→</button></div><p id="report-range" class="muted"></p><button id="report-today-btn" hidden>Back to current</button><div class="plunge-stats" id="report-stats"></div><div class="breakdown" id="report-breakdown"></div><div class="bars" id="report-chart"></div><div class="bar-labels" id="report-chart-labels"></div><div class="breakdown" id="report-legend"></div><p class="muted">Actual time comes from checking workouts complete on the Day view. Unlogged sessions are not counted as zero. A full week means every required workout was checked.</p><hr><h3 class="report-section">Cold plunge</h3><div class="bar" id="pcal-nav"><button id="pcal-prev" aria-label="Previous 6 months">←</button><h4 id="pcal-range-label"></h4><button id="pcal-next" aria-label="Next 6 months">→</button></div><div class="plunge-stats" id="report-plunge-stats"></div><button id="pcal-toggle" type="button">Show 6 months</button><div class="pcal-months collapsed" id="pcal-months"></div><div id="pcal-detail"></div>`;
+  box.innerHTML=`<h2>Reporting</h2><h3 class="report-section">Fitness</h3><div class="kind-filter" id="report-kind" role="group" aria-label="Workout type">${KINDS.map(([v,t])=>`<button type="button" data-kind="${v}" aria-pressed="${v==='all'}">${esc(t)}</button>`).join('')}</div><div class="bar" id="report-nav"><button id="report-prev" aria-label="Previous period">←</button><select id="report-period" aria-label="Period">${PERIODS.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select><button id="report-next" aria-label="Next period">→</button></div><p id="report-range" class="muted"></p><button id="report-today-btn" hidden>Back to current</button><div class="plunge-stats" id="report-stats"></div><div class="breakdown" id="report-breakdown"></div><div class="bars" id="report-chart"></div><div class="bar-labels" id="report-chart-labels"></div><div class="breakdown" id="report-legend"></div><p class="muted">Counts are required workouts (optional ones like HIIT Cycle add time but not count). Actual time comes from checking workouts complete on the Day view; unlogged sessions are not counted as zero. A full week means every required workout was checked.</p><hr><h3 class="report-section">Cold plunge</h3><div class="bar" id="pcal-nav"><button id="pcal-prev" aria-label="Previous 6 months">←</button><h4 id="pcal-range-label"></h4><button id="pcal-next" aria-label="Next 6 months">→</button></div><div class="plunge-stats" id="report-plunge-stats"></div><button id="pcal-toggle" type="button">Show 6 months</button><div class="pcal-months collapsed" id="pcal-months"></div><div id="pcal-detail"></div>`;
   document.querySelector('.layout').after(box);
   let saved=null;try{saved=localStorage.getItem('hybridReportPeriod');}catch{}
   if(saved&&PERIODS.some(p=>p[0]===saved))box.querySelector('#report-period').value=saved;
@@ -72,7 +72,7 @@ export function mountReporting(h){
   $('#report-range').textContent=period==='week'?`${start} – ${end}`:navigable?`${monthLabel(start)} · ${start} – ${end}`:`${start} – ${end}`;
   const kind=box.dataset.kind||'all';$('#report-kind').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.kind===kind)));
   const s=rangeSummary(db,start,end,kind),pct=s.planned?Math.round(s.completed/s.planned*100):0,wk=weekStreak(db,today);
-  $('#report-stats').innerHTML=`<div><small>Workouts done</small><strong>${s.completed} / ${s.planned}</strong><span class="rate ${rateClass(s.completed,s.planned)}">${s.planned?pct+'%':'—'}</span></div><div><small>Actual time</small><strong>${s.logged?hms(s.minutes):'—'}</strong></div><div><small>Full weeks in a row</small><strong>${streakText(wk)}</strong></div>`;
+  $('#report-stats').innerHTML=`<div><small>Required done</small><strong>${s.completed} / ${s.planned}</strong><span class="rate ${rateClass(s.completed,s.planned)}">${s.planned?pct+'%':'—'}</span></div><div><small>Actual time</small><strong>${s.logged?hms(s.minutes):'—'}</strong></div><div><small>Full weeks in a row</small><strong>${streakText(wk)}</strong></div>`;
   $('#report-breakdown').innerHTML=KIND_ORDER.filter(k=>s.byKind[k]).map(k=>{const b=s.byKind[k];return `<span><span class="dot k-${k}"></span>${KIND_NAME[k]} <b>${b.completed}</b>/${b.planned}${b.logged?` · <b>${hms(b.minutes)}</b>`:''}</span>`;}).join('');
   renderChart(timeSeries(db,start,end,period,kind));
   const months=sixMonthSpan(calAnchor);

@@ -1,5 +1,5 @@
-import {plan,resolveLongDay} from './core.js?v=3.26.2';
-import {isExercise,workoutKind} from './wellness.js?v=3.26.2';
+import {plan,resolveLongDay} from './core.js?v=3.26.3';
+import {isExercise,workoutKind} from './wellness.js?v=3.26.3';
 // Strava sport types → the app's workout buckets. Garmin/Strava strength uploads arrive as
 // WeightTraining (or the generic Workout), so both count as strength.
 export function stravaKind(a){
@@ -10,8 +10,7 @@ export function stravaKind(a){
  if(/walk|hike/i.test(t))return 'walk';
  return 'other';
 }
-// Treadmill/walk rows are 'other' to Reporting but should still pick up a Strava walk.
-const taskKind=t=>/treadmill|walk|hike/i.test(t.n)?'walk':workoutKind(t);
+const taskKind=workoutKind;
 export const activityDate=a=>String(a?.start_date_local||'').slice(0,10);
 // Fills in actual time for the day's matching workout and checks it off. Rules:
 // - one activity claims at most one row, matched on the day and workout type, earliest first;
