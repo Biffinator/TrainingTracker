@@ -32,6 +32,16 @@ test('re-applying is a no-op; a second run the same day finds no free row; a del
  assert.equal(applyStrava(db,[{...run,id:103,moving_time:1500}],'2026-09-08').applied,1); // 101 gone from Strava: the row takes 103
  assert.deepEqual(db.days['2026-09-08'].sessions['ath-2026-09-08-run-aerobic-development'],{minutes:25,strava:103});
 });
+test('an unchecked linked row is re-checked, and an edited activity updates the time',()=>{
+ const db=withAthletica(fresh());const id='ath-2026-09-08-run-aerobic-development';
+ applyStrava(db,[run],'2026-09-08');
+ db.days['2026-09-08'].done[id]=false; // user unticked it
+ assert.equal(applyStrava(db,[run],'2026-09-08').applied,1);
+ assert.equal(db.days['2026-09-08'].done[id],true);
+ assert.equal(applyStrava(db,[{...run,moving_time:1300}],'2026-09-08').applied,1); // Strava edit
+ assert.deepEqual(db.days['2026-09-08'].sessions[id],{minutes:21.6667,strava:101});
+ assert.equal(applyStrava(db,[{...run,moving_time:1300}],'2026-09-08').applied,0); // then idempotent
+});
 test('the watch is the record: a typed time is replaced and the row linked',()=>{
  const db=withAthletica(fresh());
  db.days['2026-09-08'].sessions={'ath-2026-09-08-run-aerobic-development':{minutes:22}};db.days['2026-09-08'].done['ath-2026-09-08-run-aerobic-development']=true;

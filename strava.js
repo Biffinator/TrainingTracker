@@ -1,5 +1,5 @@
-import {plan,resolveLongDay} from './core.js?v=3.25.2';
-import {isExercise,workoutKind} from './wellness.js?v=3.25.2';
+import {plan,resolveLongDay} from './core.js?v=3.25.3';
+import {isExercise,workoutKind} from './wellness.js?v=3.25.3';
 // Strava sport types → the app's workout buckets. Garmin/Strava strength uploads arrive as
 // WeightTraining (or the generic Workout), so both count as strength.
 export function stravaKind(a){
@@ -16,8 +16,9 @@ export const activityDate=a=>String(a?.start_date_local||'').slice(0,10);
 // Fills in actual time for the day's matching workout and checks it off. Rules:
 // - one activity claims at most one row, matched on the day and workout type, earliest first;
 // - the watch is the record: Strava's moving time replaces a typed time on a row that has no Strava link yet;
-// - a row keeps its activity while that activity still exists on Strava, so periodic syncs are no-ops;
-//   if the activity was deleted there, the row is free again.
+// - a row keeps its activity while that activity still exists on Strava, and every sync re-asserts it:
+//   checked, with Strava's current time (so an unchecked-by-mistake row comes back and an edited activity
+//   updates). If the activity was deleted there, the row is free again.
 // Returns {applied, matched, unmatched}: applied = rows changed this pass, matched = activities linked to a row
 // (new or previously) with the row they fill, unmatched = activities in range that found no row.
 export function applyStrava(db,activities,today){
@@ -32,7 +33,11 @@ export function applyStrava(db,activities,today){
   r.done||={};r.sessions||={};
   const claimed=new Set(Object.values(r.sessions).map(s=>s?.strava).filter(Boolean)),present=new Set(list.map(a=>a.id));
   for(const a of list){
-   if(claimed.has(a.id)){const t=tasks.find(t=>r.sessions[t.id]?.strava===a.id);matched.push({...describe(a),task:t?t.n.split(' — ')[0]:'?',done:!!(t&&r.done[t.id])});continue;}
+   if(claimed.has(a.id)){
+    const t=tasks.find(t=>r.sessions[t.id]?.strava===a.id),minutes=+(a.moving_time/60).toFixed(4);
+    if(t){if(!r.done[t.id]){r.done[t.id]=true;r.missed=false;applied++;}if(r.sessions[t.id].minutes!==minutes){r.sessions[t.id].minutes=minutes;applied++;}}
+    matched.push({...describe(a),task:t?t.n.split(' — ')[0]:'?',done:!!t});continue;
+   }
    const kind=stravaKind(a);
    const t=tasks.find(t=>taskKind(t)===kind&&!(r.sessions[t.id]?.strava&&present.has(r.sessions[t.id].strava)));
    if(!t){unmatched.push(describe(a));continue;}
