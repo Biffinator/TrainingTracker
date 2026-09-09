@@ -14,7 +14,9 @@ test('sport types map to the app buckets',()=>{
 });
 test('run and ride fill in their Athletica rows with moving time and check them off',()=>{
  const db=withAthletica(fresh());
- assert.deepEqual(applyStrava(db,[ride,run],'2026-09-08'),{applied:2,matched:2,unmatched:[]});
+ const res=applyStrava(db,[ride,run],'2026-09-08');
+ assert.equal(res.applied,2);assert.deepEqual(res.unmatched,[]);
+ assert.deepEqual(res.matched.map(m=>[m.type,m.task,m.done]),[['Run','Aerobic Development',true],['VirtualRide','Aerobic Development',true]]);
  const r=db.days['2026-09-08'];
  assert.deepEqual(r.sessions,{'ath-2026-09-08-run-aerobic-development':{minutes:21.25,strava:101},'ath-2026-09-08-bike-aerobic-development':{minutes:45.2,strava:102}});
  assert.equal(r.done['ath-2026-09-08-run-aerobic-development'],true);
@@ -24,9 +26,9 @@ test('run and ride fill in their Athletica rows with moving time and check them 
 test('re-applying is a no-op; a second run the same day finds no free row; a deleted activity frees its row',()=>{
  const db=withAthletica(fresh());
  applyStrava(db,[run],'2026-09-08');
- assert.deepEqual(applyStrava(db,[run],'2026-09-08'),{applied:0,matched:1,unmatched:[]}); // still counts as matched
+ const again=applyStrava(db,[run],'2026-09-08');assert.equal(again.applied,0);assert.equal(again.matched.length,1); // still counts as matched
  const second=applyStrava(db,[run,{...run,id:103,moving_time:1500}],'2026-09-08'); // row held by 101, which is still on Strava
- assert.equal(second.applied,0);assert.equal(second.matched,1);assert.deepEqual(second.unmatched.map(u=>u.id),[103]);
+ assert.equal(second.applied,0);assert.equal(second.matched.length,1);assert.deepEqual(second.unmatched.map(u=>u.id),[103]);
  assert.equal(applyStrava(db,[{...run,id:103,moving_time:1500}],'2026-09-08').applied,1); // 101 gone from Strava: the row takes 103
  assert.deepEqual(db.days['2026-09-08'].sessions['ath-2026-09-08-run-aerobic-development'],{minutes:25,strava:103});
 });
