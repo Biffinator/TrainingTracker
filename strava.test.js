@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {stravaKind,applyStrava} from './strava.js';
 import {plan} from './core.js';
+import {workoutKind} from './wellness.js';
 const fresh=()=>({version:2,start:'2026-08-03',days:{},longDay:'Sat'});
 // Tuesday 2026-09-08 with two synced Athletica rows, as the merge would leave them.
 const withAthletica=db=>{db.days['2026-09-08']={done:{},notes:'',missed:false,sets:{},tasks:[{id:'0',n:'Cold plunge',lift:false,optional:false,ex:[]},{id:'ath-2026-09-08-run-aerobic-development',n:'Aerobic Development — Run · 20 min',lift:false,optional:false,ex:[]},{id:'ath-2026-09-08-bike-aerobic-development',n:'Aerobic Development — Bike · 45 min',lift:false,optional:false,ex:[]}]};return db;};
@@ -57,6 +58,16 @@ test('program days work too: a weight-training upload checks Lift A/B/C, a walk 
  const r=db.days['2026-09-07'];
  assert.equal(r.done[lift.id],true);assert.equal(r.sessions[lift.id].minutes,55);
  assert.equal(r.done[tread.id],true);assert.equal(r.sessions[tread.id].minutes,30);
+});
+test('the sport segment decides the kind, not the workout name',()=>{
+ assert.equal(workoutKind({n:'Strength Endurance — Run · 40 min',lift:false}),'run');
+ assert.equal(workoutKind({n:'Stength & conditioning — Strength and conditioning · 60 min',lift:true}),'strength');
+ assert.equal(workoutKind({n:'Run Prep — Bike · 30 min',lift:false}),'bike');
+ assert.equal(workoutKind({n:'Treadmill — 30 min @ 3.0 mph, 13–15% incline',lift:false}),'other');
+ const db=fresh();
+ db.days['2026-09-10']={done:{},notes:'',missed:false,sets:{},tasks:[{id:'0',n:'Cold plunge',lift:false,optional:false,ex:[]},{id:'x',n:'Strength Endurance — Run · 40 min',lift:false,optional:false,ex:[]}]};
+ assert.equal(applyStrava(db,[{id:301,sport_type:'Run',start_date_local:'2026-09-10T06:30:00Z',moving_time:2400}],'2026-09-10').applied,1);
+ assert.equal(db.days['2026-09-10'].done.x,true);
 });
 test('future dates, pre-start dates, unmatched sports and sub-minute blips are ignored',()=>{
  const db=withAthletica(fresh());

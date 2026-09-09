@@ -1,14 +1,15 @@
-import {deletePlunge,removeActivity} from './deletion.js?v=3.26.0';
-import {mountPlunge} from './plunge-ui.js?v=3.26.0';
+import {deletePlunge,removeActivity} from './deletion.js?v=3.26.1';
+import {mountPlunge} from './plunge-ui.js?v=3.26.1';
 let refreshPlunge=()=>{},refreshReport=()=>{};
-import {connectCloud} from './cloud.js?v=3.26.0';
-import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay} from './core.js?v=3.26.0';
-import {isExercise} from './wellness.js?v=3.26.0';
-import {mountReporting} from './reporting-ui.js?v=3.26.0';
-import {shiftMonths} from './reporting.js?v=3.26.0';
-import {mountSuggestions} from './suggestions-ui.js?v=3.26.0';
-import {mergeAthletica} from './athletica.js?v=3.26.0';
-import {applyStrava} from './strava.js?v=3.26.0';
+import {connectCloud} from './cloud.js?v=3.26.1';
+import {today,weekday,addDays,cycle,plan,status,setCount,previous,migrate,validDate,validateBackup,replaceTask,resolveLongDay} from './core.js?v=3.26.1';
+import {isExercise} from './wellness.js?v=3.26.1';
+import {mountReporting} from './reporting-ui.js?v=3.26.1';
+import {shiftMonths} from './reporting.js?v=3.26.1';
+import {mountSuggestions} from './suggestions-ui.js?v=3.26.1';
+import {mergeAthletica} from './athletica.js?v=3.26.1';
+import {applyStrava} from './strava.js?v=3.26.1';
+import {sportOf} from './wellness.js?v=3.26.1';
 const $=id=>document.getElementById(id); let activeId=localStorage.getItem('hybridActiveAccount')||null; let KEY=activeId?'hybridAccount:'+activeId:'hybridTrackerV2'; let cloud=null;
 const message=s=>$('message').textContent=s;
 let db,legacy=null,blocked=false;
@@ -17,7 +18,7 @@ if(!db){let start=validDate(legacy?.start)&&weekday(legacy.start)===0?legacy.sta
 let selected=today(),month=selected.slice(0,7)+'-01';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const format=(s,opts)=>new Date(s+'T12:00:00').toLocaleDateString(undefined,opts);
-function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.26.0 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
+function save(){if(blocked)return false;try{localStorage.setItem(KEY,JSON.stringify(db));if(activeId){const k='hybridCloudMeta:'+activeId;const m=JSON.parse(localStorage.getItem(k)||'{"revision":0}');m.dirty=true;localStorage.setItem(k,JSON.stringify(m));}cloud?.dirty();$('saved').textContent='V3.26.1 · Saved on this device at '+new Date().toLocaleTimeString();return true;}catch(e){message('Could not save to this browser. Export a backup now to keep your latest changes.');return false;}}
 function rec(){return db.days[selected]||(db.days[selected]={done:{},notes:'',missed:false,sets:{}});}
 function editable(){return !blocked && selected<=today() && (!!cycle(selected,db.start)||!!db.days[selected]?.tasks?.length);}
 const activityKinds=[
@@ -28,7 +29,7 @@ const activityKinds=[
  ['walk','Walk / treadmill',/walk|treadmill/i,'M13 4h1M8 21l3-7 4 7M6 13l5-5 4 4 4 1M11 8v6'],
  ['recovery','Recovery / sport',/recovery|mobility|basketball/i,'M12 21s-9-6-9-12a5 5 0 0 1 9-3a5 5 0 0 1 9 3c0 6-9 12-9 12']
 ];
-function activityIcon(t){const k=activityKinds.find(k=>k[2].test(t.n))||['other','Other workout',null,'M5 12l5 5L20 7'];return {kind:k[0],svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${k[3]}"/></svg>`};}
+function activityIcon(t){const sport=sportOf(t);const k=(sport&&activityKinds.find(k=>k[2].test(sport)))||activityKinds.find(k=>k[2].test(t.n))||['other','Other workout',null,'M5 12l5 5L20 7'];return {kind:k[0],svg:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${k[3]}"/></svg>`};}
 // Calendar tab shows 1, 2, 6 or 12 months ending at `month`, newest first like the Reporting tab.
 // 1–2 months use the full cells with activity icons; 6 and 12 use compact status-only cells.
 const CAL_SPANS=[1,2,6,12];let calSpan=1;try{const v=+localStorage.getItem('hybridCalSpan');if(CAL_SPANS.includes(v))calSpan=v;}catch{}

@@ -1,7 +1,11 @@
-import {plan,resolveLongDay} from './core.js?v=3.26.0';
+import {plan,resolveLongDay} from './core.js?v=3.26.1';
 export const isExercise=t=>!/^cold plunge/i.test(t.n);
-// Same buckets the calendar icons use; 'strength' also catches lifts added by name.
-export const workoutKind=t=>t.lift||/lift|strength|body|kettlebell/i.test(t.n)?'strength':/bike|cycl/i.test(t.n)?'bike':/run|tempo|vo₂|vo2/i.test(t.n)?'run':'other';
+// Same buckets the calendar icons use. Synced names look like "<workout> — <Sport> · <min> min", and the
+// sport segment is authoritative: "Strength Endurance — Run" is a run. Only when there is no recognisable
+// sport segment (program rows like "Treadmill — 30 min @ …") does the whole name decide.
+export const classifyWorkoutText=s=>/lift|strength|body|kettlebell/i.test(s)?'strength':/bike|cycl/i.test(s)?'bike':/run|tempo|vo₂|vo2/i.test(s)?'run':'other';
+export const sportOf=t=>{const n=String(t?.n||''),i=n.indexOf(' — ');return i>=0?n.slice(i+3).split(' · ')[0]:'';};
+export const workoutKind=t=>{if(t.lift)return 'strength';const bySport=classifyWorkoutText(sportOf(t));return bySport!=='other'?bySport:classifyWorkoutText(t.n);};
 export const KINDS=[['all','All workouts'],['run','Run'],['bike','Bike'],['strength','Strength']];
 export const kindFilter=kind=>kind==='all'||!kind?()=>true:t=>workoutKind(t)===kind;
 export function daySummary(db,d,keep=()=>true){
