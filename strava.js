@@ -1,5 +1,5 @@
-import {plan,resolveLongDay} from './core.js?v=3.29.1';
-import {isExercise,workoutKind} from './wellness.js?v=3.29.1';
+import {plan,resolveLongDay} from './core.js?v=3.29.2';
+import {isExercise,workoutKind} from './wellness.js?v=3.29.2';
 // Strava sport types → the app's workout buckets. Garmin/Strava strength uploads arrive as
 // WeightTraining (or the generic Workout), so both count as strength.
 export function stravaKind(a){
