@@ -1,4 +1,4 @@
-import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.29.0';
+import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.29.1';
 // Athletica publishes a per-user iCalendar feed (Settings → Profile → Plan Settings) of all-day
 // events named "<Sport> - <Workout name>" whose DESCRIPTION carries a "Duration: H:MM:SS|MM:SS" line.
 export const SYNC_DAYS=7;
@@ -35,6 +35,10 @@ export const isProgramLift=t=>!!t?.lift&&!isAthleticaTask(t);
 // The program's treadmill is a suggestion for days with no real cardio scheduled - once Athletica
 // syncs an actual run or bike for that day, the suggestion is redundant and is dropped.
 export const isProgramTreadmill=t=>!isAthleticaTask(t)&&/^Treadmill\b/i.test(String(t?.n||''));
+// A day's override freezes whatever the treadmill task looked like the first time it was written -
+// including, for days written before the treadmill became optional, a stale optional:false. Only a
+// still-program-numbered row (never renamed/re-added by hand, which gets a 'custom-' id) is healed.
+const isStalePristineTreadmill=t=>isProgramTreadmill(t)&&!t.optional&&/^\d+$/.test(String(t?.id??''));
 // Athletica regenerates every UID on each feed build (they are uniqid() timestamps), so ids are
 // derived from what identifies a session to a person: its date, sport and name. Duplicates get -2, -3…
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,80);
@@ -68,12 +72,13 @@ export function mergeAthletica(db,events,today,days=SYNC_DAYS){
  for(const [d,r] of Object.entries(db.days||{}))if(d>=start&&d<=end&&r?.tasks?.some(isAthleticaTask))dates.add(d);
  let changed=0;
  for(const d of dates){
-  const current=plan(d,db.start,db.days,resolveLongDay(db,d)).map(t=>({...t,ex:t.ex||[]}));
+  const raw=plan(d,db.start,db.days,resolveLongDay(db,d)).map(t=>({...t,ex:t.ex||[]}));
+  const current=raw.map(t=>isStalePristineTreadmill(t)?{...t,optional:true}:t);
   const seen=new Set(),incoming=(byDate[d]||[]).map(e=>athleticaTask(e,seen));
   carryOver(db.days[d],current,incoming);
   const cardio=incoming.some(t=>!t.lift),strength=incoming.some(t=>t.lift);
   const next=[...current.filter(t=>!isAthleticaTask(t)&&!(cardio&&isPlaceholder(t))&&!(strength&&isProgramLift(t))&&!(cardio&&isProgramTreadmill(t))),...incoming];
-  if(!next.length||JSON.stringify(next)===JSON.stringify(current))continue;
+  if(!next.length||JSON.stringify(next)===JSON.stringify(raw))continue;
   validateTasks(next);
   (db.days[d]||=(db.days[d]={done:{},notes:'',missed:false,sets:{}})).tasks=next;changed++;
  }

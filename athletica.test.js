@@ -118,6 +118,14 @@ test('a real cardio sync drops the treadmill suggestion; a strength-only sync le
  assert.ok(mon.some(t=>/^Lift A/.test(t.n)),'only cardio synced - the lift stays');
  assert.ok(mon.some(isAthleticaTask),'the synced ride is present');
 });
+test('a treadmill row frozen as required by an older sync self-heals to optional on the next sync',()=>{
+ const db=fresh();
+ // Mirrors a real override written before the treadmill became optional: numeric id, optional:false.
+ db.days['2026-09-09']={done:{},notes:'',missed:false,sets:{},tasks:[{id:'0',n:'Cold plunge',lift:false,optional:false,ex:[]},{id:'1',n:'Treadmill — 30 min @ 3.0 mph, 13–15% incline',lift:false,optional:false,ex:[]},{id:'ath-old-strength',n:'Stength & conditioning — Strength and conditioning · 60 min',lift:true,optional:false,ex:[]}]};
+ mergeAthletica(db,[{uid:'old-strength',date:'2026-09-09',sport:'Strength and conditioning',name:'Stength & conditioning',minutes:60,description:''}],'2026-09-09');
+ const wed=db.days['2026-09-09'].tasks.find(t=>/^Treadmill/.test(t.n));
+ assert.equal(wed.optional,true);
+});
 test('past days with older synced sessions are left untouched',()=>{
  const db=fresh();
  db.days['2026-08-25']={done:{'ath-old':true},notes:'',missed:false,sets:{},tasks:[{id:'0',n:'Cold plunge',lift:false,optional:false,ex:[]},{id:'ath-old',n:'Old — Run · 30 min',lift:false,optional:false,ex:[]}]};
