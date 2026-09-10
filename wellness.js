@@ -1,4 +1,4 @@
-import {plan,resolveLongDay} from './core.js?v=3.28.0';
+import {plan,resolveLongDay} from './core.js?v=3.29.0';
 export const isExercise=t=>!/^cold plunge/i.test(t.n);
 // Same buckets the calendar icons use. Synced names look like "<workout> — <Sport> · <min> min", and the
 // sport segment is authoritative: "Strength Endurance — Run" is a run. Only when there is no recognisable

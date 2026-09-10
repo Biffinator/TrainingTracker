@@ -1,4 +1,4 @@
-import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.28.0';
+import {plan,resolveLongDay,validateTasks,addDays} from './core.js?v=3.29.0';
 // Athletica publishes a per-user iCalendar feed (Settings → Profile → Plan Settings) of all-day
 // events named "<Sport> - <Workout name>" whose DESCRIPTION carries a "Duration: H:MM:SS|MM:SS" line.
 export const SYNC_DAYS=7;
@@ -27,10 +27,14 @@ export function parseIcs(text){
 export const isCardio=e=>!/strength|conditioning/i.test(e.sport);
 export const isAthleticaTask=t=>String(t?.id||'').startsWith('ath-');
 // Program slots an Athletica session stands in for. Cardio takes the generic Tue/Thu "Endurance"
-// placeholder and the long-day "Long run"/"Long bike" slot; strength takes the day's Lift A/B/C.
-// Everything else (Cold plunge, the optional HIIT Cycle, treadmill days) is left alone.
+// placeholder, the long-day "Long run"/"Long bike" slot, and the optional treadmill suggestion
+// (see isProgramTreadmill below); strength takes the day's Lift A/B/C. Cold plunge and the optional
+// HIIT Cycle are left alone.
 export const isPlaceholder=t=>{const n=String(t?.n||'');return n==='Endurance'||/^Long (run|bike)\b/i.test(n);};
 export const isProgramLift=t=>!!t?.lift&&!isAthleticaTask(t);
+// The program's treadmill is a suggestion for days with no real cardio scheduled - once Athletica
+// syncs an actual run or bike for that day, the suggestion is redundant and is dropped.
+export const isProgramTreadmill=t=>!isAthleticaTask(t)&&/^Treadmill\b/i.test(String(t?.n||''));
 // Athletica regenerates every UID on each feed build (they are uniqid() timestamps), so ids are
 // derived from what identifies a session to a person: its date, sport and name. Duplicates get -2, -3…
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,80);
@@ -68,7 +72,7 @@ export function mergeAthletica(db,events,today,days=SYNC_DAYS){
   const seen=new Set(),incoming=(byDate[d]||[]).map(e=>athleticaTask(e,seen));
   carryOver(db.days[d],current,incoming);
   const cardio=incoming.some(t=>!t.lift),strength=incoming.some(t=>t.lift);
-  const next=[...current.filter(t=>!isAthleticaTask(t)&&!(cardio&&isPlaceholder(t))&&!(strength&&isProgramLift(t))),...incoming];
+  const next=[...current.filter(t=>!isAthleticaTask(t)&&!(cardio&&isPlaceholder(t))&&!(strength&&isProgramLift(t))&&!(cardio&&isProgramTreadmill(t))),...incoming];
   if(!next.length||JSON.stringify(next)===JSON.stringify(current))continue;
   validateTasks(next);
   (db.days[d]||=(db.days[d]={done:{},notes:'',missed:false,sets:{}})).tasks=next;changed++;

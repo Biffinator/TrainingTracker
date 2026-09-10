@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseIcs,mergeAthletica,isAthleticaTask,stableId} from './athletica.js';
+import {parseIcs,mergeAthletica,isAthleticaTask,stableId,isProgramTreadmill} from './athletica.js';
 import {plan} from './core.js';
 // Synthetic fixture mirroring Athletica's real feed shape: folded lines, escaped \n and \,,
 // all-day DTSTART with TZID, both duration formats, and a strength session that must be ignored.
@@ -101,6 +101,22 @@ test('days without an Athletica strength session keep the program lift',()=>{
  mergeAthletica(db,parseIcs(ICS),'2026-09-07');
  const wed=plan('2026-09-09',db.start,db.days,'Sat');
  assert.ok(wed.some(t=>/^Lift [ABC]/.test(t.n)));
+});
+test('the program treadmill is an optional suggestion by default',()=>{
+ const db=fresh();
+ const mon=plan('2026-09-07',db.start,db.days,'Sat'),sun=plan('2026-09-13',db.start,db.days,'Sat');
+ assert.ok(mon.find(t=>/^Treadmill/.test(t.n)).optional,'lift-day treadmill is optional');
+ assert.ok(sun.find(t=>/^Treadmill/.test(t.n)).optional,'weekend-off treadmill is optional');
+});
+test('a real cardio sync drops the treadmill suggestion; a strength-only sync leaves it',()=>{
+ const db=fresh();
+ const before=plan('2026-09-07',db.start,db.days,'Sat');
+ assert.ok(before.some(isProgramTreadmill),'Monday starts with a treadmill suggestion');
+ mergeAthletica(db,[{uid:'m1',date:'2026-09-07',sport:'Bike',name:'Recovery spin',minutes:30,description:''}],'2026-09-07');
+ const mon=plan('2026-09-07',db.start,db.days,'Sat');
+ assert.ok(!mon.some(isProgramTreadmill),'a real ride drops the redundant treadmill suggestion');
+ assert.ok(mon.some(t=>/^Lift A/.test(t.n)),'only cardio synced - the lift stays');
+ assert.ok(mon.some(isAthleticaTask),'the synced ride is present');
 });
 test('past days with older synced sessions are left untouched',()=>{
  const db=fresh();
